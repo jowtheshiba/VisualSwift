@@ -33,9 +33,10 @@ The manifest permits Visual Studio 17.14 through 18.x on amd64 and arm64. This i
 | Definition | F12 navigated from the call to the method declaration; probe returned its location |
 | Diagnostics | Unsaved String-to-Int error produced red editor underline and error count; probe asserted severity 1 |
 | Rename | Probe returned edits for declaration and call; applying a rename through the IDE remains unverified |
-| References | Request completed with an empty result; feature acceptance remains open |
+| Symbol search | Native Code Search displayed indexed Swift types/members from main.swift and the unopened SearchFixture.swift without a custom Navigate To provider; probe checked declaration URI/position and an unknown query |
+| References | After indexing, Shift+F12 displayed declaration and calls in both files; double-clicking the second-file result opened SearchFixture.swift at its call; probe asserted cross-file references |
 | Protocol framing | Shared adapter tested with byte-by-byte frames, multiple frames per write, UTF-8 lengths, and a Unicode path containing spaces |
-| Server lifecycle | Probe shutdown/exit completed with exit code 0; IDE close/reopen activated a new server; previous server process was gone |
+| Server lifecycle | Probe shutdown/exit with stdin closed completed with exit code 0; indexed search sessions otherwise waited for transport EOF; IDE close/reopen activated a new server |
 | Syntax presentation | Installed IDE provided Swift coloring; no external grammar was copied |
 
 Temporary editor diagnostic changes were undone without saving. The fixture remains valid Swift source. Machine-local results are stored in artifacts/lsp-smoke.json and development logs in %TEMP%/VisualSwift. Those generated files are excluded from Git.
@@ -63,7 +64,7 @@ Deploy using scripts/deploy-prototype.ps1 with the selected vswhere instance ID.
 ## Remaining checks and fallbacks
 
 - Test Visual Studio 2022 and Windows x64 before declaring them supported; narrow the manifest range or split packages if the SDK behavior differs.
-- Investigate empty reference results after indexing and include a cross-file fixture before advertising Find All References.
+- Validate search in solution-owned Swift projects and with incomplete/cold indexes. Current acceptance covers one built SwiftPM package opened as a folder. Code Search result activation has not been separately exercised; reference-result activation and F12 across files were verified.
 - Verify rename edits through Visual Studio, .swiftinterface activation, extension unload while the IDE remains open, and recovery after server failure.
 - Validate a Swift file owned by a solution/project with a package root different from the solution directory. Until the project wrapper exists, Open Folder with one package and an explicit root override is the supported prototype workflow.
 - Test SDK discovery without inherited shell variables, invalid toolchains, and runtime prerequisites during the toolchain milestone.

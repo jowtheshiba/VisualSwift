@@ -30,6 +30,8 @@ Project-template Makefile commands and window commands should converge on the sa
 
 ## Subsequent features
 
+Code search uses the IDE's existing LSP integration. A future Search Symbols action in the Swift window/menu should invoke native Go To / Code Search. Do not add a second symbol result provider: the measured IDE already consumes workspace/symbol. Keep Find All References in its standard results pane. See SEARCH.md for measured scope and indexing requirements.
+
 - Installed toolchain discovery and updateable validation results.
 - Package dependency and target hierarchy tied to Solution Explorer.
 - Project properties and workspace-root selection for multi-package solutions.

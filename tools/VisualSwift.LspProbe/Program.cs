@@ -62,12 +62,51 @@ try
     if (items == null || !items.Any(item => item?["label"]?.ToString().Contains("greeting", StringComparison.Ordinal) == true))
         throw new InvalidOperationException("Completion did not include greeting.");
 
+    JsonNode symbols = new JsonArray();
+    for (var attempt = 0; attempt < 30; attempt++)
+    {
+        symbols = await rpc.Request("workspace/symbol", new { query = "Greeter" });
+        if (symbols is JsonArray matches && matches.Any(item => item?["name"]?.ToString() == "Greeter")) break;
+        await Task.Delay(500);
+    }
+    report["workspaceSymbols"] = symbols.DeepClone();
+    if (symbols is not JsonArray symbolItems || !symbolItems.Any(item => item?["name"]?.ToString() == "Greeter"))
+        throw new InvalidOperationException("Workspace symbol search did not find Greeter.");
+    var symbolLocation = symbolItems.First(item => item?["name"]?.ToString() == "Greeter")?["location"];
+    if (symbolLocation?["uri"]?.ToString() != uri || symbolLocation?["range"]?["start"]?["line"]?.GetValue<int>() != 0 || symbolLocation?["range"]?["start"]?["character"]?.GetValue<int>() != 7)
+        throw new InvalidOperationException("Symbol navigation did not resolve the declaration position.");
+    var missingSymbols = await rpc.Request("workspace/symbol", new { query = "VisualSwiftDefinitelyMissingSymbol" });
+    if (missingSymbols is not JsonArray { Count: 0 }) throw new InvalidOperationException("Unknown symbol search returned results.");
+    report["symbolSearchVerified"] = true;
+    JsonNode closedSymbols = new JsonArray();
+    for (var attempt = 0; attempt < 30; attempt++)
+    {
+        closedSymbols = await rpc.Request("workspace/symbol", new { query = "ClosedFileGreeter" });
+        if (closedSymbols is JsonArray { Count: > 0 }) break;
+        await Task.Delay(500);
+    }
+    report["closedFileSymbols"] = closedSymbols.DeepClone();
+    var closedItem = (closedSymbols as JsonArray)?.FirstOrDefault(item => item?["name"]?.ToString() == "ClosedFileGreeter");
+    var closedLocation = closedItem?["location"];
+    if (closedLocation?["uri"]?.ToString() != new Uri(Path.Combine(packageDirectory, "Sources", "LspSmoke", "SearchFixture.swift")).AbsoluteUri || closedLocation?["range"]?["start"]?["line"]?.GetValue<int>() != 0 || closedLocation?["range"]?["start"]?["character"]?.GetValue<int>() != 7)
+        throw new InvalidOperationException("Workspace search did not resolve the closed-file declaration.");
+    report["closedFileSearchVerified"] = true;
+
     var markerIndex = source.IndexOf("greeter.greeting", StringComparison.Ordinal) + 9;
     var markerPrefix = source[..markerIndex];
     var markerPosition = new { line = markerPrefix.Count(c => c == '\n'), character = markerIndex - (markerPrefix.LastIndexOf('\n') + 1) };
-    var references = await rpc.Request("textDocument/references", new { textDocument = new { uri }, position = markerPosition, context = new { includeDeclaration = true } });
+    JsonNode references = new JsonArray();
+    for (var attempt = 0; attempt < 30; attempt++)
+    {
+        references = await rpc.Request("textDocument/references", new { textDocument = new { uri }, position = markerPosition, context = new { includeDeclaration = true } });
+        if (references is JsonArray entries && entries.Any(item => item?["uri"]?.ToString().EndsWith("/SearchFixture.swift", StringComparison.Ordinal) == true)) break;
+        await Task.Delay(500);
+    }
     report["references"] = references.DeepClone();
     report["referencesVerified"] = references is JsonArray { Count: > 0 };
+    report["crossFileReferencesVerified"] = references is JsonArray referenceItems && referenceItems.Any(item => item?["uri"]?.ToString().EndsWith("/SearchFixture.swift", StringComparison.Ordinal) == true);
+    if (report["crossFileReferencesVerified"]?.GetValue<bool>() != true)
+        throw new InvalidOperationException("Find references did not include the second source file.");
     var rename = await rpc.Request("textDocument/rename", new { textDocument = new { uri }, position = markerPosition, newName = "welcome" });
     report["rename"] = rename.DeepClone();
     report["renameVerified"] = rename["changes"] != null || rename["documentChanges"] != null;
@@ -86,6 +125,7 @@ try
     await rpc.Notify("textDocument/didClose", new { textDocument = new { uri } });
     await rpc.Request("shutdown", null);
     await rpc.Notify("exit", null);
+    rpc.CloseInput();
     await rpc.WaitForExit();
     report["serverExitCode"] = rpc.ExitCode;
     report["passed"] = rpc.ExitCode == 0;
@@ -152,10 +192,11 @@ sealed class LspSession : IAsyncDisposable
     }
 
     public Task Notify(string method, object? parameters) => Send(new { jsonrpc = "2.0", method, @params = parameters });
+    public void CloseInput() => input.Dispose();
     public async Task WaitForExit()
     {
-        for (var attempt = 0; attempt < 100 && !process.HasExited; attempt++) await Task.Delay(100);
-        if (!process.HasExited) throw new TimeoutException("SourceKit-LSP did not exit within 10 seconds.");
+        for (var attempt = 0; attempt < 300 && !process.HasExited; attempt++) await Task.Delay(100);
+        if (!process.HasExited) throw new TimeoutException("SourceKit-LSP did not exit within 30 seconds.");
     }
 
     private async Task Send(object message)

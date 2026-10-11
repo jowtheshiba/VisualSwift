@@ -4,6 +4,8 @@ Status: milestone 0 editor prototype exit criteria verified on Visual Studio 202
 
 Prepared: 2026-10-11.
 
+Search follow-up: native Code Search displays Swift workspace symbols, including closed files. Cross-file Find All References and F12 navigation were verified on the primary IDE after indexing. Automated acceptance checks live in the LSP probe; see [search validation](SEARCH.md). No additional Navigate To provider is needed for the measured SDK.
+
 ## Product requirements
 
 1. Extend Microsoft Visual Studio on Windows with Swift language support.

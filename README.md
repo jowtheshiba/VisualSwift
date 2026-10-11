@@ -38,6 +38,8 @@ $env:VISUALSWIFT_WORKSPACE = (Resolve-Path .\samples\LspSmoke).Path
 
 Open `Sources\LspSmoke\main.swift` in Solution Explorer. Use Ctrl+Space for completion, hover for Quick Info, and F12 for Go To Definition. A temporary type error should produce an editor diagnostic.
 
+Use **Edit > Go To > Go To All** (`Ctrl+,` with the default keyboard mapping) to search Swift symbols through the standard Code Search interface. Open a Swift file first to activate SourceKit-LSP. Search includes indexed files that are not open in the editor; select a result and press Enter to navigate. **Find All References** (`Shift+F12`) uses the same server index. Results can be incomplete while indexing is in progress. See [search validation](docs/SEARCH.md).
+
 `VISUALSWIFT_TOOLCHAIN` optionally selects a toolchain root or its `usr\bin` directory. Otherwise the extension selects a PATH directory containing both `swift.exe` and `sourcekit-lsp.exe`. `VISUALSWIFT_WORKSPACE` optionally pins one package root and must contain `Package.swift`; Open Folder supplies a root when the override is absent. Environment variables must be set before launching Visual Studio. SDK variables such as `SDKROOT` are inherited in this prototype.
 
 Development logs are written to `%TEMP%\VisualSwift\client-<pid>.log`. They include protocol results and local paths. See [prototype validation](docs/PROTOTYPE_VALIDATION.md) for measured compatibility, technical decisions, and remaining checks.
