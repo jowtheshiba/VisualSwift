@@ -1,6 +1,6 @@
 # VisualSwift development plan
 
-Status: milestone 0 editor prototype exit criteria verified on Visual Studio 2026 / Windows ARM64. Additional compatibility and solution-context checks remain open; see [prototype validation](PROTOTYPE_VALIDATION.md).
+Status: milestone 0 editor prototype exit criteria verified on Visual Studio 2026 / Windows ARM64. At the user's request, initial project templates and SwiftPM Build/Rebuild/Clean wrappers were implemented before the toolchain UI. This is partial milestone 3 work using the built-in Makefile project system; the dedicated project system remains open. See [prototype validation](PROTOTYPE_VALIDATION.md) and [project templates](PROJECT_TEMPLATES.md).
 
 Prepared: 2026-10-11.
 

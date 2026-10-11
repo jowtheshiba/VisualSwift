@@ -1,0 +1,5 @@
+.build/
+.swiftpm/
+.visualswift/
+.vs/
+*.vcxproj.user

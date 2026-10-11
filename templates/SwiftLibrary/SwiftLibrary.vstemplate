@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<VSTemplate Version="3.0.0" Type="Project" xmlns="http://schemas.microsoft.com/developer/vstemplate/2005">
+  <TemplateData>
+    <Name>Swift Library</Name>
+    <Description>A SwiftPM library with XCTest and Visual Studio Build, Rebuild, and Clean integration. Requires C++ project support and an installed Windows Swift toolchain.</Description>
+    <Icon>template.ico</Icon>
+    <ProjectType>VC</ProjectType>
+    <TemplateID>VisualSwift.Library</TemplateID>
+    <DefaultName>SwiftLibrary</DefaultName>
+    <ProvideDefaultName>true</ProvideDefaultName>
+    <CreateNewFolder>true</CreateNewFolder>
+    <SortOrder>20</SortOrder>
+    <LanguageTag>Swift</LanguageTag>
+    <PlatformTag>Windows</PlatformTag>
+    <ProjectTypeTag>Library</ProjectTypeTag>
+  </TemplateData>
+  <TemplateContent>
+    <Project File="Swift.vcxproj" TargetFileName="$projectname$.vcxproj" ReplaceParameters="true">
+      <ProjectItem ReplaceParameters="true" TargetFileName="Package.swift">Package.swift</ProjectItem>
+      <ProjectItem ReplaceParameters="false" TargetFileName="README.md">README.md</ProjectItem>
+      <ProjectItem ReplaceParameters="false" TargetFileName=".gitignore">gitignore.txt</ProjectItem>
+      <ProjectItem ReplaceParameters="false" OpenInEditor="true" TargetFileName="Sources\Library\Greeter.swift">Sources\Library\Greeter.swift</ProjectItem>
+      <ProjectItem ReplaceParameters="false" TargetFileName="Tests\LibraryTests\GreeterTests.swift">Tests\LibraryTests\GreeterTests.swift</ProjectItem>
+      <ProjectItem ReplaceParameters="false" TargetFileName="VisualSwift\Invoke-Swift.ps1">VisualSwift\Invoke-Swift.ps1</ProjectItem>
+    </Project>
+  </TemplateContent>
+</VSTemplate>

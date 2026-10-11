@@ -2,7 +2,17 @@
 
 Swift language support for Microsoft Visual Studio on Windows, powered by SourceKit-LSP and Swift Package Manager.
 
-The repository contains a working compatibility prototype. Completion, Quick Info, Go To Definition, and editor diagnostics have been verified in Visual Studio 2026 on Windows ARM64 with Swift 6.4. This is a development VSIX; toolchain selection UI, project templates, and IDE build commands are subsequent milestones.
+The repository contains a working development VSIX. Completion, Quick Info, Go To Definition, and editor diagnostics have been verified in Visual Studio 2026 on Windows ARM64 with Swift 6.4. Swift Console Application and Swift Library templates now provide a SwiftPM package inside a Visual Studio Makefile project, with Build/Rebuild/Clean integration. Toolchain selection UI and a dedicated Swift project system remain subsequent work.
+
+## Project templates
+
+Install the VSIX and search for `Swift` in File > New > Project. Choose **Swift Console Application** or **Swift Library**. The library includes a public API and an XCTest example. Each template has a generated icon; the extension has its own VisualSwift icon.
+
+The templates require Visual Studio C++ project support because they use its built-in Makefile project system. Configure the Windows Swift toolchain and SDK environment before launching the IDE. Standard Build/Rebuild/Clean commands delegate to SwiftPM, and Debug/Release controls its build configuration. Platform labels do not select a different Swift architecture. `Package.swift` remains authoritative.
+
+Run console applications with `swift run`; run library tests with `swift test`. The generated `VisualSwift\Invoke-Swift.ps1` also supports Run and Test. F5 debugging and Test Explorer integration are not configured.
+
+See [template implementation and validation](docs/PROJECT_TEMPLATES.md) for requirements and limitations, and [icon assets](assets/README.md) for sources and generation prompts.
 
 ## Build and test
 
@@ -11,6 +21,7 @@ Prerequisites: Windows, Visual Studio, .NET SDK 10 for the probe, and an install
 ```powershell
 .\scripts\build.ps1
 .\scripts\test-lsp.ps1
+.\scripts\test-templates.ps1 -InstanceId YOUR_INSTANCE_ID -Platform ARM64
 ```
 
 The VSIX is generated at `src\VisualSwift.VisualStudio\bin\Debug\net472\VisualSwift.VisualStudio.vsix`. The probe writes `artifacts\lsp-smoke.json`, including feature results and server exit status. An explicit toolchain can be tested with `-ToolchainBin`.

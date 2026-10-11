@@ -27,5 +27,22 @@
     <Content Include="VisualSwift.settings.json"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="..\..\LICENSE" Link="LICENSE"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="..\..\NOTICE" Link="NOTICE"><IncludeInVSIX>true</IncludeInVSIX></Content>
+    <Content Include="..\..\assets\icons\visualswift-128.png" Link="Assets\visualswift.png"><IncludeInVSIX>true</IncludeInVSIX></Content>
+    <Content Include="..\..\assets\icons\visualswift.ico" Link="Assets\visualswift.ico"><IncludeInVSIX>true</IncludeInVSIX></Content>
+    <Content Include="$(IntermediateOutputPath)ProjectTemplates\SwiftConsole.zip" Link="ProjectTemplates\SwiftConsole.zip"><IncludeInVSIX>true</IncludeInVSIX></Content>
+    <Content Include="$(IntermediateOutputPath)ProjectTemplates\SwiftLibrary.zip" Link="ProjectTemplates\SwiftLibrary.zip"><IncludeInVSIX>true</IncludeInVSIX></Content>
   </ItemGroup>
+  <Target Name="BuildSwiftProjectTemplates" BeforeTargets="BeforeBuild">
+    <ItemGroup>
+      <ConsoleTemplateFiles Include="$(MSBuildProjectDirectory)\..\..\templates\SwiftConsole\**\*" />
+      <LibraryTemplateFiles Include="$(MSBuildProjectDirectory)\..\..\templates\SwiftLibrary\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ConsoleTemplateFiles)" DestinationFiles="@(ConsoleTemplateFiles->'$(IntermediateOutputPath)TemplateStaging\SwiftConsole\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(LibraryTemplateFiles)" DestinationFiles="@(LibraryTemplateFiles->'$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="..\..\templates\Shared\gitignore.txt;..\..\assets\icons\swift-console.ico;..\..\templates\Shared\Invoke-Swift.ps1" DestinationFiles="$(IntermediateOutputPath)TemplateStaging\SwiftConsole\gitignore.txt;$(IntermediateOutputPath)TemplateStaging\SwiftConsole\template.ico;$(IntermediateOutputPath)TemplateStaging\SwiftConsole\VisualSwift\Invoke-Swift.ps1" />
+    <Copy SourceFiles="..\..\templates\Shared\gitignore.txt;..\..\assets\icons\swift-library.ico;..\..\templates\Shared\Invoke-Swift.ps1" DestinationFiles="$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\gitignore.txt;$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\template.ico;$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\VisualSwift\Invoke-Swift.ps1" />
+    <MakeDir Directories="$(IntermediateOutputPath)ProjectTemplates" />
+    <ZipDirectory SourceDirectory="$(IntermediateOutputPath)TemplateStaging\SwiftConsole" DestinationFile="$(IntermediateOutputPath)ProjectTemplates\SwiftConsole.zip" Overwrite="true" />
+    <ZipDirectory SourceDirectory="$(IntermediateOutputPath)TemplateStaging\SwiftLibrary" DestinationFile="$(IntermediateOutputPath)ProjectTemplates\SwiftLibrary.zip" Overwrite="true" />
+  </Target>
 </Project>
