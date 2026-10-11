@@ -1,6 +1,6 @@
 # VisualSwift development plan
 
-Status: proposed implementation plan; no implementation milestones completed.
+Status: milestone 0 editor prototype exit criteria verified on Visual Studio 2026 / Windows ARM64. Additional compatibility and solution-context checks remain open; see [prototype validation](PROTOTYPE_VALIDATION.md).
 
 Prepared: 2026-10-11.
 
@@ -17,14 +17,14 @@ Prepared: 2026-10-11.
 
 ## Initial scope and assumptions
 
-- Primary target: Visual Studio 2026, Windows x64. This is a proposed default based on the installed environment.
+- Primary target: Visual Studio 2026. The installed validation environment is Windows ARM64; x64 remains a compatibility candidate.
 - Compatibility target: Visual Studio 2022 17.14, subject to prototype validation. Do not claim compatibility before testing it.
 - Initial project model: one SwiftPM package opened using Open Folder.
 - Initial toolchains: locally installed Windows Swift toolchains, with an explicit path override.
 - Use the installed Swift 6.4 toolchain as the first validation candidate; its executable and SourceKit-LSP must pass validation before it becomes a supported version.
 - Users install Swift and its platform dependencies separately. The extension detects missing prerequisites and provides actionable messages.
 - Initial templates: Swift Console Application and Swift Library.
-- Remote Mac builds, Xcode projects, SwiftUI previews, WSL, multi-root workspaces, and Windows ARM64 are deferred.
+- Remote Mac builds, Xcode projects, SwiftUI previews, WSL, and multi-root workspaces are deferred.
 - Debugging and Test Explorer are subsequent milestones; running swift test is part of the initial release.
 
 ## Architecture
@@ -39,7 +39,7 @@ Use a native C# VSIX extension with a Visual Studio-independent core. Avoid a No
 | Project integration | Load Swift projects into solutions and bridge standard build commands to SwiftPM |
 | Templates | Package Visual Studio templates and initialize SwiftPM projects |
 
-Start by evaluating VSSDK with ILanguageClient, because the roadmap includes native project integration. Compare the newer VisualStudio.Extensibility LanguageServerProvider only where it affects compatibility or required behavior. Select one LSP integration path after the prototype; do not maintain two competing implementations.
+The prototype selects VSSDK with ILanguageClient and a .NET Framework 4.7.2 VSIX. A stream adapter requests static registration and push diagnostics for the measured SourceKit-LSP / IDE combination. Keep this integration path unless later compatibility evidence requires revisiting it.
 
 The selected toolchain must supply swift, sourcekit-lsp, and the environment used for all build/run/test operations. Do not combine executables from different toolchains through incidental PATH resolution.
 

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
+  <Metadata>
+    <Identity Id="VisualSwift.Prototype.53cde9a7-22a8-4a50-a752-8d9f5ac6477e" Version="0.1.0" Language="en-US" Publisher="jowtheshiba" />
+    <DisplayName>VisualSwift Prototype</DisplayName>
+    <Description xml:space="preserve">Swift language support powered by SourceKit-LSP. Compatibility prototype.</Description>
+    <License>LICENSE</License>
+  </Metadata>
+  <Installation>
+    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.14,19.0)"><ProductArchitecture>amd64</ProductArchitecture></InstallationTarget>
+    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.14,19.0)"><ProductArchitecture>arm64</ProductArchitecture></InstallationTarget>
+  </Installation>
+  <Dependencies>
+    <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" Version="[4.7.2,)" />
+  </Dependencies>
+  <Prerequisites>
+    <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[17.14,19.0)" DisplayName="Visual Studio core editor" />
+  </Prerequisites>
+  <Assets>
+    <Asset Type="Microsoft.VisualStudio.MefComponent" d:Source="Project" d:ProjectName="VisualSwift.VisualStudio" Path="|VisualSwift.VisualStudio|" />
+    <Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="File" Path="VisualSwift.pkgdef" />
+  </Assets>
+</PackageManifest>

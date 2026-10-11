@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <VSSDKBuildToolsAutoSetup>true</VSSDKBuildToolsAutoSetup>
+    <LangVersion>latest</LangVersion>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <AssemblyName>VisualSwift.VisualStudio</AssemblyName>
+    <RootNamespace>VisualSwift</RootNamespace>
+    <GeneratePkgDefFile>false</GeneratePkgDefFile>
+    <IncludeAssemblyInVSIXContainer>true</IncludeAssemblyInVSIXContainer>
+    <IncludeAssemblyFromOutputFolderInVSIXContainer>true</IncludeAssemblyFromOutputFolderInVSIXContainer>
+    <IncludeDebugSymbolsInVSIXContainer>true</IncludeDebugSymbolsInVSIXContainer>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <CreateVsixContainer>true</CreateVsixContainer>
+    <DeployExtension>false</DeployExtension>
+    <UseCodebase>true</UseCodebase>
+    <LicenseExpression>Apache-2.0</LicenseExpression>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.14.40265" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VisualStudio.LanguageServer.Client" Version="17.14.60" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="18.9.820" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.3" PrivateAssets="all" />
+    <Reference Include="System.ComponentModel.Composition" />
+    <Content Include="source.extension.vsixmanifest" />
+    <Content Include="VisualSwift.pkgdef"><IncludeInVSIX>true</IncludeInVSIX></Content>
+    <Content Include="VisualSwift.settings.json"><IncludeInVSIX>true</IncludeInVSIX></Content>
+    <Content Include="..\..\LICENSE" Link="LICENSE"><IncludeInVSIX>true</IncludeInVSIX></Content>
+    <Content Include="..\..\NOTICE" Link="NOTICE"><IncludeInVSIX>true</IncludeInVSIX></Content>
+  </ItemGroup>
+</Project>
