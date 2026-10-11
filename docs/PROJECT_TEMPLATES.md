@@ -8,11 +8,11 @@ Both templates create a Windows SwiftPM package and a vcxproj Makefile wrapper t
 
 Build, Rebuild, and Clean call a package-local VisualSwift/Invoke-Swift.ps1 script. It uses VISUALSWIFT_TOOLCHAIN when configured, otherwise selects a PATH directory containing both swift.exe and sourcekit-lsp.exe. It prepends that directory to PATH and inherits the SDK environment. Failed Swift commands return their exit status to MSBuild.
 
-Debug and Release map to SwiftPM debug and release. ARM64 and x64 project configurations are provided to fit solution configurations; the selected Swift toolchain determines the actual compilation architecture. Switching the platform label does not cross-compile.
+Debug and Release map to SwiftPM debug and release. Select the Visual Studio solution platform matching the Swift toolchain architecture: ARM64 for aarch64, or x64 for x86_64. Visual Studio configures the native linker environment from this selection. An x64 environment with an ARM64 toolchain fails to link the package manifest. Switching the platform label does not cross-compile.
 
 The application has a product named after the safe project name and an App target with main.swift. The library has a product named after the safe project name, a Library target with a public Greeter, and a LibraryTests XCTest target. Fixed valid module names avoid template substitutions producing invalid Swift import identifiers. Rename target names, directories, and test imports together when choosing your own module names.
 
-Source files and Package.swift appear in Solution Explorer through explicit project items. For new files, use Show All Files / Include In Project; SwiftPM discovers the package source folders independently. Explicit file paths also ensure the VC template engine copies sources when creating a project.
+Source files and Package.swift appear in Solution Explorer through explicit project items. For new files, use Show All Files / Include In Project; SwiftPM discovers the package source folders independently. A small IWizard creates the embedded source and command resources before the VC project loads, because the measured VC template engine skipped nested file copies. The wizard refuses to overwrite an existing generated source or command file.
 
 ## Validation
 
@@ -23,6 +23,8 @@ The automated smoke script consumes the built template ZIP files, substitutes pr
 - Library XCTest execution: one test passed with zero failures.
 - MSBuild Clean for both projects.
 - VSIX packaging of both template definitions, sources, scripts, icons, and template catalog.
+
+Native New Project creation of Swift Library was also verified in an experimental Visual Studio instance, including nested source/test files and the package command script. Build Solution then succeeded with the ARM64 solution platform matching the installed toolchain. The console wizard path has not yet been exercised through the native dialog.
 
 The Swift SDK emitted a wchar_t modularization warning while compiling XCTest with the installed assertions toolchain; the test build and execution succeeded.
 

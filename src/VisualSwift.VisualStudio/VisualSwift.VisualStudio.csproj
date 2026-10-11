@@ -19,6 +19,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.14.40265" ExcludeAssets="runtime" />
     <PackageReference Include="Microsoft.VisualStudio.LanguageServer.Client" Version="17.14.60" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VisualStudio.TemplateWizardInterface" Version="17.10.40170" ExcludeAssets="runtime" />
     <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="18.9.820" PrivateAssets="all" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.3" PrivateAssets="all" />
     <Reference Include="System.ComponentModel.Composition" />
@@ -31,6 +32,12 @@
     <Content Include="..\..\assets\icons\visualswift.ico" Link="Assets\visualswift.ico"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="$(IntermediateOutputPath)ProjectTemplates\SwiftConsole.zip" Link="ProjectTemplates\SwiftConsole.zip"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="$(IntermediateOutputPath)ProjectTemplates\SwiftLibrary.zip" Link="ProjectTemplates\SwiftLibrary.zip"><IncludeInVSIX>true</IncludeInVSIX></Content>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\templates\SwiftConsole\Sources\App\main.swift" LogicalName="VisualSwift.Templates.Console.main.swift" />
+    <EmbeddedResource Include="..\..\templates\SwiftLibrary\Sources\Library\Greeter.swift" LogicalName="VisualSwift.Templates.Library.Greeter.swift" />
+    <EmbeddedResource Include="..\..\templates\SwiftLibrary\Tests\LibraryTests\GreeterTests.swift" LogicalName="VisualSwift.Templates.Library.GreeterTests.swift" />
+    <EmbeddedResource Include="..\..\templates\Shared\Invoke-Swift.ps1" LogicalName="VisualSwift.Templates.Invoke-Swift.ps1" />
   </ItemGroup>
   <Target Name="BuildSwiftProjectTemplates" BeforeTargets="BeforeBuild">
     <ItemGroup>

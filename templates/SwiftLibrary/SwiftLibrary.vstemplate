@@ -24,4 +24,8 @@
       <ProjectItem ReplaceParameters="false" TargetFileName="VisualSwift\Invoke-Swift.ps1">VisualSwift\Invoke-Swift.ps1</ProjectItem>
     </Project>
   </TemplateContent>
+  <WizardExtension>
+    <Assembly>VisualSwift.VisualStudio, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null</Assembly>
+    <FullClassName>VisualSwift.SwiftTemplateWizard</FullClassName>
+  </WizardExtension>
 </VSTemplate>
