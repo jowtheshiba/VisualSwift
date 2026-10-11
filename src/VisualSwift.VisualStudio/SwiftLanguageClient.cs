@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.VisualStudio.LanguageServer.Client;
 using Microsoft.VisualStudio.Threading;
 using Microsoft.VisualStudio.Utilities;
+using Microsoft.VisualStudio.Shell;
 using Newtonsoft.Json.Linq;
 using StreamJsonRpc;
 
@@ -17,6 +18,8 @@ namespace VisualSwift
     public sealed class SwiftLanguageClient : ILanguageClient, ILanguageClientCustomMessage2, IDisposable
     {
         private Process server;
+        private SwiftProcessJob serverJob;
+        private readonly SemaphoreSlim restartGate = new SemaphoreSlim(1);
         private readonly SwiftMiddleLayer middleLayer = new SwiftMiddleLayer();
 
         public string Name => "VisualSwift SourceKit-LSP";
@@ -27,46 +30,60 @@ namespace VisualSwift
         public object MiddleLayer => middleLayer;
         public object CustomMessageTarget => null;
         public event AsyncEventHandler<EventArgs> StartAsync;
-        public event AsyncEventHandler<EventArgs> StopAsync { add { } remove { } }
+        public event AsyncEventHandler<EventArgs> StopAsync;
 
         public async Task OnLoadedAsync()
         {
+            SwiftRuntime.Restart = RestartServerAsync;
             PrototypeLog.Write("Language client loaded.");
             if (StartAsync != null)
                 await StartAsync.InvokeAsync(this, EventArgs.Empty);
         }
 
-        public Task<Connection> ActivateAsync(CancellationToken token)
+        public async Task<Connection> ActivateAsync(CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
             DisposeServer();
-            var toolchain = Toolchain.Resolve();
-            var workspace = Environment.GetEnvironmentVariable("VISUALSWIFT_WORKSPACE");
-            if (!string.IsNullOrWhiteSpace(workspace))
+            try
             {
-                workspace = Path.GetFullPath(workspace);
-                if (!File.Exists(Path.Combine(workspace, "Package.swift")))
-                    throw new InvalidOperationException("VISUALSWIFT_WORKSPACE must point to a Swift package containing Package.swift.");
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(token);
+                var workspace = SwiftWorkspace.Current() ?? SwiftRuntime.Workspace;
+                SwiftRuntime.SetWorkspace(workspace);
+                var toolchain = await Task.Run(() => Toolchain.Resolve(workspace), token);
+                middleLayer.Workspace = workspace;
+                SwiftRuntime.SetServer("Starting", toolchain.BinDirectory, workspace);
+                var process = new Process { StartInfo = toolchain.CreateServerStartInfo(workspace), EnableRaisingEvents = true };
+                var job = new SwiftProcessJob();
+                server = process;
+                serverJob = job;
+                process.ErrorDataReceived += (_, args) => { if (args.Data != null) PrototypeLog.Write("server: " + args.Data); };
+                process.Exited += (_, __) =>
+                {
+                    PrototypeLog.Write("SourceKit-LSP exited.");
+                    if (ReferenceEquals(server, process)) SwiftRuntime.SetServer("Error", failure: "SourceKit-LSP exited. Open Swift Output for details.");
+                };
+                if (!process.Start())
+                {
+                    throw new InvalidOperationException("SourceKit-LSP could not be started.");
+                }
+                job.Attach(process);
+                process.BeginErrorReadLine();
+                PrototypeLog.Write("Started SourceKit-LSP pid=" + process.Id + " bin=" + toolchain.BinDirectory);
+                var connection = new SwiftServerConnection(process, workspace);
+                return connection;
             }
-            middleLayer.Workspace = workspace;
-            var process = new Process { StartInfo = toolchain.CreateServerStartInfo(workspace), EnableRaisingEvents = true };
-            process.ErrorDataReceived += (_, args) => { if (args.Data != null) PrototypeLog.Write("server: " + args.Data); };
-            process.Exited += (_, __) => PrototypeLog.Write("SourceKit-LSP exited.");
-            if (!process.Start())
+            catch (Exception error)
             {
-                process.Dispose();
-                throw new InvalidOperationException("SourceKit-LSP could not be started.");
+                DisposeServer();
+                SwiftRuntime.SetServer("Error", failure: error.Message);
+                throw;
             }
-            server = process;
-            process.BeginErrorReadLine();
-            PrototypeLog.Write("Started SourceKit-LSP pid=" + process.Id + " bin=" + toolchain.BinDirectory);
-            var connection = new SwiftServerConnection(process, workspace);
-            return Task.FromResult<Connection>(connection);
         }
 
         public Task OnServerInitializedAsync()
         {
             PrototypeLog.Write("SourceKit-LSP initialized.");
+            SwiftRuntime.SetServer("Running", SwiftRuntime.ActiveBin, SwiftRuntime.ActiveWorkspace);
             return Task.CompletedTask;
         }
 
@@ -74,6 +91,7 @@ namespace VisualSwift
         {
             PrototypeLog.Write("SourceKit-LSP initialization failed: " + initializationState.InitializationException);
             DisposeServer();
+            SwiftRuntime.SetServer("Error", failure: initializationState.InitializationException?.Message ?? "SourceKit-LSP initialization failed.");
             return Task.FromResult(new InitializationFailureContext
             {
                 FailureMessage = "SourceKit-LSP initialization failed. Check the selected Swift toolchain and the logs in %TEMP%\\VisualSwift."
@@ -84,9 +102,24 @@ namespace VisualSwift
 
         public void Dispose() => DisposeServer();
 
+        private async Task RestartServerAsync()
+        {
+            await restartGate.WaitAsync();
+            try
+            {
+                if (StopAsync != null) await StopAsync.InvokeAsync(this, EventArgs.Empty);
+                DisposeServer();
+                if (StartAsync == null) throw new InvalidOperationException("Open a Swift file to activate SourceKit-LSP.");
+                await StartAsync.InvokeAsync(this, EventArgs.Empty);
+            }
+            finally { restartGate.Release(); }
+        }
+
         private void DisposeServer()
         {
             var process = Interlocked.Exchange(ref server, null);
+            Interlocked.Exchange(ref serverJob, null)?.Dispose();
+            SwiftRuntime.SetServer("Stopped");
             if (process == null) return;
             try
             {

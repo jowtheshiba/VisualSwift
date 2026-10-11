@@ -6,7 +6,7 @@
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <AssemblyName>VisualSwift.VisualStudio</AssemblyName>
     <RootNamespace>VisualSwift</RootNamespace>
-    <GeneratePkgDefFile>false</GeneratePkgDefFile>
+    <GeneratePkgDefFile>true</GeneratePkgDefFile>
     <IncludeAssemblyInVSIXContainer>true</IncludeAssemblyInVSIXContainer>
     <IncludeAssemblyFromOutputFolderInVSIXContainer>true</IncludeAssemblyFromOutputFolderInVSIXContainer>
     <IncludeDebugSymbolsInVSIXContainer>true</IncludeDebugSymbolsInVSIXContainer>
@@ -23,6 +23,12 @@
     <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="18.9.820" PrivateAssets="all" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.3" PrivateAssets="all" />
     <Reference Include="System.ComponentModel.Composition" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="System.Design" />
+    <VSCTCompile Include="Commands.vsct"><ResourceName>Menus.ctmenu</ResourceName></VSCTCompile>
     <Content Include="source.extension.vsixmanifest" />
     <Content Include="VisualSwift.pkgdef"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="VisualSwift.settings.json"><IncludeInVSIX>true</IncludeInVSIX></Content>

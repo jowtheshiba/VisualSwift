@@ -8,6 +8,8 @@ namespace VisualSwift
         private static readonly object Gate = new object();
         private static readonly string LogDirectory = Path.Combine(Path.GetTempPath(), "VisualSwift");
         private static readonly string LogPath = Path.Combine(LogDirectory, "client-" + System.Diagnostics.Process.GetCurrentProcess().Id + ".log");
+        public static event Action<string> Written = delegate { };
+        public static string FilePath => LogPath;
 
         public static void Write(string message)
         {
@@ -21,6 +23,9 @@ namespace VisualSwift
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
+            try { Written?.Invoke(message); }
+            catch (System.Runtime.InteropServices.COMException) { }
+            catch (InvalidOperationException) { }
         }
     }
 }

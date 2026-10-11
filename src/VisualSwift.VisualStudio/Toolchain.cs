@@ -2,6 +2,8 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace VisualSwift
 {
@@ -14,18 +16,11 @@ namespace VisualSwift
 
         public string BinDirectory { get; }
 
-        public static Toolchain Resolve()
+        public static Toolchain Resolve(string workspace = null, SwiftSettings settings = null)
         {
-            var configured = Environment.GetEnvironmentVariable("VISUALSWIFT_TOOLCHAIN");
+            var configured = (settings ?? SwiftSettings.Default).Read(workspace).Path;
             if (!string.IsNullOrWhiteSpace(configured))
-            {
-                var root = Path.GetFullPath(configured);
-                var candidates = new[] { root, Path.Combine(root, "usr", "bin") };
-                var match = candidates.FirstOrDefault(IsToolchain);
-                if (match == null)
-                    throw new InvalidOperationException("The configured Swift toolchain must contain swift.exe and sourcekit-lsp.exe in its bin directory.");
-                return new Toolchain(match);
-            }
+                return FromPath(configured);
 
             foreach (var entry in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
             {
@@ -35,6 +30,32 @@ namespace VisualSwift
             }
 
             throw new InvalidOperationException("Swift was not found. Install a Swift toolchain or set VISUALSWIFT_TOOLCHAIN before starting Visual Studio.");
+        }
+
+        public static Toolchain FromPath(string path)
+        {
+            var root = Path.GetFullPath(path.Trim().Trim('"'));
+            var match = new[] { root, Path.Combine(root, "usr", "bin") }.FirstOrDefault(IsToolchain);
+            if (match == null) throw new InvalidOperationException("Select a Swift toolchain containing swift.exe and sourcekit-lsp.exe in its bin directory.");
+            return new Toolchain(match);
+        }
+
+        public async Task<string> ValidateAsync(CancellationToken token)
+        {
+            var version = await SwiftProcess.RunAsync(this, "--version", null, token).ConfigureAwait(false);
+            var sdk = Environment.GetEnvironmentVariable("SDKROOT");
+            if (string.IsNullOrWhiteSpace(sdk) || !Directory.Exists(sdk))
+                throw new InvalidOperationException(version.Trim() + Environment.NewLine + "SDKROOT is missing or invalid. Configure the Windows Swift SDK environment and restart Visual Studio.");
+            return version.Trim();
+        }
+
+        public ProcessStartInfo CreateSwiftStartInfo(string arguments, string workspace)
+        {
+            var info = CreateServerStartInfo(workspace);
+            info.FileName = Path.Combine(BinDirectory, "swift.exe");
+            info.Arguments = arguments;
+            info.RedirectStandardInput = false;
+            return info;
         }
 
         public ProcessStartInfo CreateServerStartInfo(string workspace)

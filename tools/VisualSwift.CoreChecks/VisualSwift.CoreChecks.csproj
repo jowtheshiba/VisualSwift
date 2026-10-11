@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>disable</Nullable></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <Compile Include="..\..\src\VisualSwift.VisualStudio\SwiftSettings.cs" Link="SwiftSettings.cs" />
+    <Compile Include="..\..\src\VisualSwift.VisualStudio\Toolchain.cs" Link="Toolchain.cs" />
+    <Compile Include="..\..\src\VisualSwift.VisualStudio\SwiftProcess.cs" Link="SwiftProcess.cs" />
+  </ItemGroup>
+</Project>

@@ -4,6 +4,14 @@ $ErrorActionPreference = 'Stop'
 try {
     $package = Split-Path -Parent $PSScriptRoot
     $configured = $env:VISUALSWIFT_TOOLCHAIN
+    $globalSettings = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'VisualSwift\settings.json'
+    $workspaceSettings = Join-Path $package '.vs\VisualSwift\settings.json'
+    foreach ($settingsPath in @($globalSettings, $workspaceSettings)) {
+        if (Test-Path -LiteralPath $settingsPath) {
+            $savedToolchain = (Get-Content -Raw -LiteralPath $settingsPath | ConvertFrom-Json).toolchain
+            if (![string]::IsNullOrWhiteSpace($savedToolchain)) { $configured = $savedToolchain }
+        }
+    }
     $swiftBin = $null
     if ($configured) {
         foreach ($candidate in @($configured, (Join-Path $configured 'usr\bin'))) {
@@ -12,7 +20,7 @@ try {
                 break
             }
         }
-        if (!$swiftBin) { throw 'VISUALSWIFT_TOOLCHAIN must contain swift.exe and sourcekit-lsp.exe in its bin directory.' }
+        if (!$swiftBin) { throw 'The selected Swift toolchain must contain swift.exe and sourcekit-lsp.exe in its bin directory.' }
     }
     else {
         foreach ($entry in $env:PATH.Split([System.IO.Path]::PathSeparator)) {
