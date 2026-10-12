@@ -32,6 +32,7 @@ The manifest permits Visual Studio 17.14 through 18.x on amd64 and arm64. This i
 | Hover | IDE Quick Info displayed func greeting(name: String) -> String; probe returned hover contents |
 | Definition | F12 navigated from the call to the method declaration; probe returned its location |
 | Diagnostics | Unsaved String-to-Int error produced red editor underline and error count; probe asserted severity 1 |
+| Formatting | Native Format Document and Format Selection verified with unsaved text and Undo; probe checks configuration precedence, Unicode, indentation, errors, idempotence, and modern Swift; see FORMATTING.md |
 | Rename | Native method rename changed declaration and calls across files; native class rename and Undo verified. Probe validates six symbol scenarios and compiler-checks applied edits; see RENAME.md |
 | Symbol search | Native Code Search displayed indexed Swift types/members from main.swift and the unopened SearchFixture.swift without a custom Navigate To provider; probe checked declaration URI/position and an unknown query |
 | References | After indexing, Shift+F12 displayed declaration and calls in both files; double-clicking the second-file result opened SearchFixture.swift at its call; probe asserted cross-file references |

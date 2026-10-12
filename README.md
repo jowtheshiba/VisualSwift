@@ -45,6 +45,8 @@ Use native **Rename...** (`Ctrl+R, Ctrl+R`) for Swift symbols. Method renames ca
 
 Open **Extensions > Swift** for the unified window with Toolchain, Language Server, Package, Debug, and Output pages. Save a global toolchain or a workspace override, validate it, and restart the server from the window. See [window behavior and settings](docs/PLUGIN_WINDOW.md). Workspace and global settings take priority over `VISUALSWIFT_TOOLCHAIN`; PATH is the final fallback and must contain both `swift.exe` and `sourcekit-lsp.exe` in one directory. `VISUALSWIFT_WORKSPACE` optionally pins one package root and must contain `Package.swift`; Open Folder supplies a root when the override is absent. Environment variables must be set before launching Visual Studio. SDK variables such as `SDKROOT` are inherited in this prototype.
 
+Use **Format Document** (`Ctrl+K, Ctrl+D`) and **Format Selection** (`Ctrl+K, Ctrl+F`) for manual Swift formatting. They use the active toolchain and respect `.swift-format`; changes remain in the editor and support Undo. The Language Server page displays the formatter path. See [formatting behavior and validation](docs/FORMATTING.md). Format on Save is not implemented.
+
 Development logs are written to `%TEMP%\VisualSwift\client-<pid>.log`. They include protocol results and local paths. See [prototype validation](docs/PROTOTYPE_VALIDATION.md) for measured compatibility, technical decisions, and remaining checks.
 
 ## Intended features

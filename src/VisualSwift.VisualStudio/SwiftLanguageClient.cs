@@ -193,7 +193,13 @@ namespace VisualSwift
             PrototypeLog.Write("request " + methodName);
             if ((methodName == "textDocument/prepareRename" || methodName == "textDocument/rename") && FlushFileChanges != null)
                 await FlushFileChanges();
-            var result = await sendRequest(methodParam);
+            JToken result;
+            try { result = await sendRequest(methodParam); }
+            catch (Exception error) when (methodName == "textDocument/formatting" || methodName == "textDocument/rangeFormatting")
+            {
+                PrototypeLog.Write("Swift formatting failed: " + error.Message);
+                throw;
+            }
             PrototypeLog.Write("response " + methodName + " " + result?.ToString(Newtonsoft.Json.Formatting.None));
             return result;
         }

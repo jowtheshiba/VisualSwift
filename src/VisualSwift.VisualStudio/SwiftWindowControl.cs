@@ -21,6 +21,7 @@ namespace VisualSwift
         private readonly TextBlock validation = Label();
         private readonly TextBlock server = Label();
         private readonly TextBlock active = Label();
+        private readonly TextBlock formatter = Label();
         private readonly TextBlock package = Label();
         private readonly TextBlock metadata = Label();
         private readonly TextBlock message = Label();
@@ -78,6 +79,8 @@ namespace VisualSwift
             var languageServer = Page("Language Server");
             languageServer.Children.Add(server);
             languageServer.Children.Add(active);
+            languageServer.Children.Add(formatter);
+            languageServer.Children.Add(new TextBlock { Text = "Format Document: Ctrl+K, Ctrl+D\nFormat Selection: Ctrl+K, Ctrl+F\nThe nearest .swift-format file takes priority over editor indentation settings.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 8) });
             var language = Row(languageServer);
             Button(language, "Restart", _ => SwiftPackage.RestartAsync());
             Button(language, "Show Output", _ => { navigation.SelectedIndex = 4; return Task.CompletedTask; });
@@ -344,6 +347,9 @@ namespace VisualSwift
                 selection.Text = "Selected: " + bin + Environment.NewLine + "Source: " + selected.Scope;
                 server.Text = "Status: " + SwiftRuntime.State + (SwiftRuntime.Error == null ? "" : Environment.NewLine + SwiftRuntime.Error);
                 active.Text = "Active: " + (SwiftRuntime.ActiveBin ?? "None");
+                var formatterBin = SwiftRuntime.ActiveBin ?? bin;
+                var formatterPath = Path.Combine(formatterBin, "swift-format.exe");
+                formatter.Text = File.Exists(formatterPath) ? "Formatter: " + formatterPath : "Formatter unavailable: swift-format.exe is missing from the toolchain.";
                 if (SwiftRuntime.ActiveBin != null && (!string.Equals(bin, SwiftRuntime.ActiveBin, StringComparison.OrdinalIgnoreCase) || !string.Equals(workspace, SwiftRuntime.ActiveWorkspace, StringComparison.OrdinalIgnoreCase)))
                     active.Text += Environment.NewLine + "Restart required to use the selected toolchain/package.";
                 package.Text = workspace == null ? "Package: None" : "Package: " + Path.Combine(workspace, "Package.swift");

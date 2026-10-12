@@ -113,6 +113,7 @@ try
     report["renameVerified"] = rename["changes"] != null || rename["documentChanges"] != null;
     report["renameChecks"] = await RenameChecks.Run(rpc, packageDirectory, args[2]);
     report["renameFileChanges"] = await RenameFileChanges.Run(rpc, packageDirectory);
+    report["formattingChecks"] = await FormattingChecks.Run(rpc, packageDirectory, args[2]);
 
     await rpc.Notify("textDocument/didChange", new { textDocument = new { uri, version = 2 }, contentChanges = new[] { new { text = source + "\nlet invalidValue: Int = \"wrong\"\n" } } });
     var diagnostics = await rpc.Request("textDocument/diagnostic", new { textDocument = new { uri } });

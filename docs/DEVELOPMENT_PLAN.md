@@ -94,7 +94,7 @@ Exit criteria: selection survives IDE restart; switching changes both language s
 
 ## Milestone 2: editor and SwiftPM workflow
 
-Editor progress: native Rename is verified in Visual Studio and six indexed symbol scenarios are compiler-checked by the LSP probe. A pinned MIT Swift TextMate grammar is bundled, with local fixes for typed throws and Swift 6.4 module selectors. Nine tokenizer cases with 45 assertions pass. See [Rename](RENAME.md) and [syntax highlighting](SYNTAX_HIGHLIGHTING.md) for coverage and remaining limitations.
+Editor progress: native Rename is verified in Visual Studio and six indexed symbol scenarios are compiler-checked by the LSP probe. A pinned MIT Swift TextMate grammar is bundled, with local fixes for typed throws and Swift 6.4 module selectors. Nine tokenizer cases with 45 assertions pass. Native Format Document and Format Selection are verified with unsaved buffers and Undo; the probe checks configuration precedence, range isolation, indentation, Unicode, and errors. See [Rename](RENAME.md), [syntax highlighting](SYNTAX_HIGHLIGHTING.md), and [formatting](FORMATTING.md) for coverage and remaining limitations.
 
 Tasks:
 
