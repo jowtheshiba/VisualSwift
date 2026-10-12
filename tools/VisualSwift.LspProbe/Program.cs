@@ -20,6 +20,7 @@ try
     var initialize = await rpc.Request("initialize", new
     {
         processId = Environment.ProcessId,
+        initializationOptions = new { backgroundIndexing = true },
         rootUri = new Uri(packageDirectory + Path.DirectorySeparatorChar).AbsoluteUri,
         workspaceFolders = new[] { new { uri = new Uri(packageDirectory + Path.DirectorySeparatorChar).AbsoluteUri, name = "LspSmoke" } },
         capabilities = new
@@ -111,6 +112,7 @@ try
     report["rename"] = rename.DeepClone();
     report["renameVerified"] = rename["changes"] != null || rename["documentChanges"] != null;
     report["renameChecks"] = await RenameChecks.Run(rpc, packageDirectory, args[2]);
+    report["renameFileChanges"] = await RenameFileChanges.Run(rpc, packageDirectory);
 
     await rpc.Notify("textDocument/didChange", new { textDocument = new { uri, version = 2 }, contentChanges = new[] { new { text = source + "\nlet invalidValue: Int = \"wrong\"\n" } } });
     var diagnostics = await rpc.Request("textDocument/diagnostic", new { textDocument = new { uri } });

@@ -19,12 +19,14 @@ namespace VisualSwift
     {
         private Process server;
         private SwiftProcessJob serverJob;
+        private JsonRpc customRpc;
+        private SwiftFileWatcher fileWatcher;
         private readonly SemaphoreSlim restartGate = new SemaphoreSlim(1);
         private readonly SwiftMiddleLayer middleLayer = new SwiftMiddleLayer();
 
         public string Name => "VisualSwift SourceKit-LSP";
         public IEnumerable<string> ConfigurationSections => new[] { "swift" };
-        public object InitializationOptions => null;
+        public object InitializationOptions => new { backgroundIndexing = true };
         public IEnumerable<string> FilesToWatch => new[] { "**/Package.swift", "**/Package.resolved", "**/*.swift" };
         public bool ShowNotificationOnInitializeFailed => true;
         public object MiddleLayer => middleLayer;
@@ -84,6 +86,12 @@ namespace VisualSwift
         {
             PrototypeLog.Write("SourceKit-LSP initialized.");
             SwiftRuntime.SetServer("Running", SwiftRuntime.ActiveBin, SwiftRuntime.ActiveWorkspace);
+            if (customRpc != null && middleLayer.Workspace != null)
+            {
+                var rpc = customRpc;
+                fileWatcher = new SwiftFileWatcher(middleLayer.Workspace, changes => rpc.NotifyWithParameterObjectAsync("workspace/didChangeWatchedFiles", changes));
+                middleLayer.FlushFileChanges = fileWatcher.FlushAsync;
+            }
             return Task.CompletedTask;
         }
 
@@ -98,7 +106,11 @@ namespace VisualSwift
             });
         }
 
-        public Task AttachForCustomMessageAsync(JsonRpc rpc) => Task.CompletedTask;
+        public Task AttachForCustomMessageAsync(JsonRpc rpc)
+        {
+            customRpc = rpc;
+            return Task.CompletedTask;
+        }
 
         public void Dispose() => DisposeServer();
 
@@ -117,6 +129,9 @@ namespace VisualSwift
 
         private void DisposeServer()
         {
+            middleLayer.FlushFileChanges = null;
+            Interlocked.Exchange(ref fileWatcher, null)?.Dispose();
+            customRpc = null;
             var process = Interlocked.Exchange(ref server, null);
             Interlocked.Exchange(ref serverJob, null)?.Dispose();
             SwiftRuntime.SetServer("Stopped");
@@ -155,6 +170,7 @@ namespace VisualSwift
     internal sealed class SwiftMiddleLayer : ILanguageClientMiddleLayer2<JToken>
     {
         public string Workspace { get; set; }
+        public Func<Task> FlushFileChanges { get; set; }
         public bool CanHandle(string methodName) => true;
 
         public async Task HandleNotificationAsync(string methodName, JToken methodParam, Func<JToken, Task> sendNotification)
@@ -175,6 +191,8 @@ namespace VisualSwift
                 initialize["workspaceFolders"] = new JArray(new JObject { ["uri"] = uri, ["name"] = Path.GetFileName(Workspace) });
             }
             PrototypeLog.Write("request " + methodName);
+            if ((methodName == "textDocument/prepareRename" || methodName == "textDocument/rename") && FlushFileChanges != null)
+                await FlushFileChanges();
             var result = await sendRequest(methodParam);
             PrototypeLog.Write("response " + methodName + " " + result?.ToString(Newtonsoft.Json.Formatting.None));
             return result;
