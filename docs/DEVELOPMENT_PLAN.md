@@ -2,7 +2,7 @@
 
 Status: milestone 0 editor prototype exit criteria verified on Visual Studio 2026 / Windows ARM64. At the user's request, initial project templates and SwiftPM Build/Rebuild/Clean wrappers were implemented before the toolchain UI. This is partial milestone 3 work using the built-in Makefile project system; the dedicated project system remains open. See [prototype validation](PROTOTYPE_VALIDATION.md) and [project templates](PROJECT_TEMPLATES.md).
 
-Prepared: 2026-10-11.
+Updated: 2026-10-12. The extension shell now includes persisted global/workspace toolchain selection, validation, server restart, SwiftPM metadata, and output in one window. Automatic installed-toolchain/SDK discovery remains open. See [window implementation](PLUGIN_WINDOW.md).
 
 Search follow-up: native Code Search displays Swift workspace symbols, including closed files. Cross-file Find All References and F12 navigation were verified on the primary IDE after indexing. Automated acceptance checks live in the LSP probe; see [search validation](SEARCH.md). No additional Navigate To provider is needed for the measured SDK.
 
@@ -10,7 +10,7 @@ Search follow-up: native Code Search displays Swift workspace symbols, including
 
 1. Extend Microsoft Visual Studio on Windows with Swift language support.
 2. Use SourceKit-LSP from the selected Swift toolchain as the language engine.
-3. Provide a Swift menu that visibly identifies the selected toolchain, including when unavailable.
+3. Provide one Swift window with sidebar navigation and a visible selected toolchain, including when unavailable.
 4. Use English for extension-owned UI, messages, settings, and template names.
 5. Write new code without comments. Keep architectural explanations in documentation.
 6. Integrate with standard Visual Studio editing, output, diagnostics, build, and project workflows where supported.
@@ -84,7 +84,7 @@ Tasks:
 
 - Discover supported installed toolchains and allow adding a directory manually.
 - Validate executable paths, version, architecture, SDK availability, and runtime environment with bounded subprocess calls.
-- Add a Swift menu with Current Toolchain, Select Toolchain..., Restart Language Server, and Show Swift Output.
+- Add one Extensions > Swift entry opening a unified window with Toolchain, Language Server, Package, and Output pages.
 - Display version and path in a Swift Toolchains window; distinguish selected configuration from active server state.
 - Persist a global default and a workspace override without committing machine-specific paths by default.
 - Use one settings snapshot for LSP and SwiftPM processes.

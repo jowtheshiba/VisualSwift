@@ -24,7 +24,10 @@ namespace VisualSwift
         private readonly TextBlock package = Label();
         private readonly TextBlock metadata = Label();
         private readonly TextBlock message = Label();
-        private readonly StackPanel actions = new StackPanel();
+        private readonly Grid actions = new Grid();
+        private readonly TextBlock summary = Label();
+        private readonly ListBox navigation = new ListBox { MinWidth = 150, BorderThickness = new Thickness(0), Margin = new Thickness(0, 0, 12, 0) };
+        private readonly TextBox output = new TextBox { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
         private readonly Button cancel = new Button { Content = "Cancel", IsEnabled = false, Margin = new Thickness(0, 8, 0, 0) };
         private CancellationTokenSource operation;
 
@@ -34,16 +37,32 @@ namespace VisualSwift
             SetResourceReference(ForegroundProperty, EnvironmentColors.ToolWindowTextBrushKey);
             SetResourceReference(FontFamilyProperty, VsFonts.EnvironmentFontFamilyKey);
             SetResourceReference(FontSizeProperty, VsFonts.EnvironmentFontSizeKey);
-            var root = new StackPanel { Margin = new Thickness(12), MaxWidth = 900, HorizontalAlignment = HorizontalAlignment.Stretch };
-            Content = new ScrollViewer { Content = root, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-            root.Children.Add(actions);
-            Heading(actions, "Toolchain");
-            actions.Children.Add(selection);
-            actions.Children.Add(new TextBlock { Text = "Toolchain root or bin directory", Margin = new Thickness(0, 6, 0, 4) });
+            var root = new Grid { Margin = new Thickness(12) };
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            Content = root;
+            var header = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
+            Heading(header, "Swift");
+            header.Children.Add(summary);
+            root.Children.Add(header);
+            var body = new Grid();
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            Grid.SetRow(body, 1);
+            root.Children.Add(body);
+            navigation.SetResourceReference(BackgroundProperty, EnvironmentColors.ToolWindowBackgroundBrushKey);
+            navigation.SetResourceReference(ForegroundProperty, EnvironmentColors.ToolWindowTextBrushKey);
+            body.Children.Add(navigation);
+            Grid.SetColumn(actions, 1);
+            body.Children.Add(actions);
+            var toolchains = Page("Toolchain");
+            toolchains.Children.Add(selection);
+            toolchains.Children.Add(new TextBlock { Text = "Toolchain root or bin directory", Margin = new Thickness(0, 6, 0, 4) });
             toolchainPath.SetResourceReference(BackgroundProperty, EnvironmentColors.ToolWindowBackgroundBrushKey);
             toolchainPath.SetResourceReference(ForegroundProperty, EnvironmentColors.ToolWindowTextBrushKey);
-            actions.Children.Add(toolchainPath);
-            var choose = Row(actions);
+            toolchains.Children.Add(toolchainPath);
+            var choose = Row(toolchains);
             Button(choose, "Browse...", BrowseAsync);
             Button(choose, "Validate", ValidateAsync);
             scope.Items.Add("Global"); scope.Items.Add("Workspace"); scope.SelectedIndex = 0;
@@ -51,24 +70,74 @@ namespace VisualSwift
             choose.Children.Add(scope);
             Button(choose, "Apply", ApplyAsync);
             Button(choose, "Use Global", UseGlobalAsync);
-            actions.Children.Add(validation);
-            Heading(actions, "Language Server");
-            actions.Children.Add(server);
-            actions.Children.Add(active);
-            var language = Row(actions);
+            toolchains.Children.Add(validation);
+            var languageServer = Page("Language Server");
+            languageServer.Children.Add(server);
+            languageServer.Children.Add(active);
+            var language = Row(languageServer);
             Button(language, "Restart", _ => SwiftPackage.RestartAsync());
-            Button(language, "Show Output", _ => SwiftPackage.Instance.ShowOutputAsync());
-            Heading(actions, "Package");
-            actions.Children.Add(package);
-            actions.Children.Add(metadata);
-            var packages = Row(actions);
+            Button(language, "Show Output", _ => { navigation.SelectedIndex = 3; return Task.CompletedTask; });
+            var packagePage = Page("Package");
+            packagePage.Children.Add(package);
+            packagePage.Children.Add(metadata);
+            var packages = Row(packagePage);
             Button(packages, "Refresh Package", RefreshPackageAsync);
             Button(packages, "Open Package.swift", OpenManifestAsync);
-            root.Children.Add(message);
-            root.Children.Add(cancel);
+            var outputPage = new Grid();
+            outputPage.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            outputPage.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            outputPage.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            outputPage.Children.Add(new TextBlock { Text = "Output", FontSize = 16, FontWeight = FontWeights.SemiBold });
+            var outputActions = new WrapPanel { Margin = new Thickness(0, 8, 0, 8) };
+            Button(outputActions, "Clear", _ => { output.Clear(); return Task.CompletedTask; });
+            Grid.SetRow(outputActions, 1);
+            outputPage.Children.Add(outputActions);
+            output.SetResourceReference(BackgroundProperty, EnvironmentColors.ToolWindowBackgroundBrushKey);
+            output.SetResourceReference(ForegroundProperty, EnvironmentColors.ToolWindowTextBrushKey);
+            Grid.SetRow(output, 2);
+            outputPage.Children.Add(output);
+            AddPage("Output", outputPage);
+            navigation.SelectionChanged += (_, __) =>
+            {
+                for (var i = 0; i < actions.Children.Count; i++) actions.Children[i].Visibility = i == navigation.SelectedIndex ? Visibility.Visible : Visibility.Collapsed;
+            };
+            navigation.SelectedIndex = 0;
+            var footer = new DockPanel { Margin = new Thickness(0, 12, 0, 0) };
+            DockPanel.SetDock(cancel, Dock.Right);
+            footer.Children.Add(cancel);
+            footer.Children.Add(message);
+            Grid.SetRow(footer, 2);
+            root.Children.Add(footer);
             cancel.Click += (_, __) => operation?.Cancel();
             Loaded += OnLoaded;
-            Unloaded += (_, __) => { SwiftRuntime.Changed -= RuntimeChanged; operation?.Cancel(); };
+            Unloaded += (_, __) => { SwiftRuntime.Changed -= RuntimeChanged; PrototypeLog.Written -= AppendOutput; operation?.Cancel(); };
+        }
+
+        private StackPanel Page(string title)
+        {
+            var content = new StackPanel { MaxWidth = 900, HorizontalAlignment = HorizontalAlignment.Stretch };
+            Heading(content, title);
+            AddPage(title, new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
+            return content;
+        }
+
+        private void AddPage(string title, FrameworkElement page)
+        {
+            navigation.Items.Add(new ListBoxItem { Content = title, Padding = new Thickness(10, 8, 10, 8) });
+            page.Visibility = Visibility.Collapsed;
+            actions.Children.Add(page);
+        }
+
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSTHRD001", Justification = "Output updates are dispatched to this control's UI thread without blocking the server.")]
+        private void AppendOutput(string line)
+        {
+            if (Dispatcher.HasShutdownStarted) return;
+            _ = Dispatcher.BeginInvoke(new Action(() =>
+            {
+                output.AppendText(DateTime.Now.ToString("HH:mm:ss") + " " + line + Environment.NewLine);
+                if (output.Text.Length > 200000) output.Text = output.Text.Substring(output.Text.Length - 100000);
+                output.ScrollToEnd();
+            }));
         }
 
         private static TextBlock Label() => new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 4) };
@@ -87,6 +156,8 @@ namespace VisualSwift
         {
             SwiftRuntime.Changed -= RuntimeChanged;
             SwiftRuntime.Changed += RuntimeChanged;
+            PrototypeLog.Written -= AppendOutput;
+            PrototypeLog.Written += AppendOutput;
             await RunAsync(RefreshAsync);
         }
 
@@ -111,6 +182,12 @@ namespace VisualSwift
 
         private async Task RefreshAsync(CancellationToken token)
         {
+            if (output.Text.Length == 0 && File.Exists(PrototypeLog.FilePath))
+            {
+                var history = await Task.Run(() => File.ReadAllText(PrototypeLog.FilePath), token);
+                output.Text = history.Length > 100000 ? history.Substring(history.Length - 100000) : history;
+                output.ScrollToEnd();
+            }
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(token);
             SwiftRuntime.SetWorkspace(SwiftWorkspace.Current() ?? SwiftRuntime.Workspace);
             var workspace = SwiftRuntime.Workspace;
@@ -207,6 +284,7 @@ namespace VisualSwift
 
         private void UpdateStatus()
         {
+            summary.Text = (SwiftRuntime.SelectedVersion?.Split('\n')[0].Trim() ?? "Toolchain not validated") + "  |  " + SwiftRuntime.State + "  |  " + (SwiftRuntime.Workspace == null ? "No package" : Path.GetFileName(SwiftRuntime.Workspace));
             try
             {
                 var workspace = SwiftRuntime.Workspace;

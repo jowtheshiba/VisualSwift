@@ -2,7 +2,7 @@
 
 Swift language support for Microsoft Visual Studio on Windows, powered by SourceKit-LSP and Swift Package Manager.
 
-The repository contains a working development VSIX. Completion, Quick Info, Go To Definition, and editor diagnostics have been verified in Visual Studio 2026 on Windows ARM64 with Swift 6.4. Swift Console Application and Swift Library templates now provide a SwiftPM package inside a Visual Studio Makefile project, with Build/Rebuild/Clean integration. Toolchain selection UI and a dedicated Swift project system remain subsequent work.
+The repository contains a working development VSIX. Completion, Quick Info, Go To Definition, and editor diagnostics have been verified in Visual Studio 2026 on Windows ARM64 with Swift 6.4. Swift Console Application and Swift Library templates now provide a SwiftPM package inside a Visual Studio Makefile project, with Build/Rebuild/Clean integration. A single Swift window provides toolchain selection, language-server management, package inspection, and output through a sidebar. A dedicated Swift project system remains subsequent work.
 
 ## Project templates
 
@@ -40,14 +40,14 @@ Open `Sources\LspSmoke\main.swift` in Solution Explorer. Use Ctrl+Space for comp
 
 Use **Edit > Go To > Go To All** (`Ctrl+,` with the default keyboard mapping) to search Swift symbols through the standard Code Search interface. Open a Swift file first to activate SourceKit-LSP. Search includes indexed files that are not open in the editor; select a result and press Enter to navigate. **Find All References** (`Shift+F12`) uses the same server index. Results can be incomplete while indexing is in progress. See [search validation](docs/SEARCH.md).
 
-`VISUALSWIFT_TOOLCHAIN` optionally selects a toolchain root or its `usr\bin` directory. Otherwise the extension selects a PATH directory containing both `swift.exe` and `sourcekit-lsp.exe`. `VISUALSWIFT_WORKSPACE` optionally pins one package root and must contain `Package.swift`; Open Folder supplies a root when the override is absent. Environment variables must be set before launching Visual Studio. SDK variables such as `SDKROOT` are inherited in this prototype.
+Open **Extensions > Swift** for the unified window with Toolchain, Language Server, Package, and Output pages. Save a global toolchain or a workspace override, validate it, and restart the server from the window. See [window behavior and settings](docs/PLUGIN_WINDOW.md). Workspace and global settings take priority over `VISUALSWIFT_TOOLCHAIN`; PATH is the final fallback and must contain both `swift.exe` and `sourcekit-lsp.exe` in one directory. `VISUALSWIFT_WORKSPACE` optionally pins one package root and must contain `Package.swift`; Open Folder supplies a root when the override is absent. Environment variables must be set before launching Visual Studio. SDK variables such as `SDKROOT` are inherited in this prototype.
 
 Development logs are written to `%TEMP%\VisualSwift\client-<pid>.log`. They include protocol results and local paths. See [prototype validation](docs/PROTOTYPE_VALIDATION.md) for measured compatibility, technical decisions, and remaining checks.
 
 ## Intended features
 
 - Swift editing with completion, navigation, diagnostics, and syntax highlighting.
-- An English-language Swift menu showing the selected toolchain.
+- An English-language Swift window with a sidebar and selected toolchain summary.
 - Toolchain discovery, selection, validation, and language server restart.
 - Swift Package Manager build, run, and test commands integrated with Visual Studio.
 - Swift console application and library project templates.

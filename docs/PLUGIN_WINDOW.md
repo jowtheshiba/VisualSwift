@@ -1,47 +1,39 @@
-# Swift tool window proposal
+# Swift window
 
-Status: proposed interface for the next implementation step. All extension-owned labels and messages are English.
+The extension provides one dockable Swift window with a left sidebar. Open it with **Extensions > Swift**. All extension-owned labels and messages are English. The window header shows the validated compiler version, language-server state, and package folder.
 
-## Entry points and presentation
+## Sidebar
 
-Provide a dockable Swift tool window using Visual Studio fonts, colors, focus behavior, and keyboard navigation. Open it from the Swift menu. The menu also displays the current toolchain and exposes Select Toolchain, Restart Language Server, and Show Swift Output.
+| Page | Information and actions |
+| --- | --- |
+| Toolchain | Selected directory and selection source, compiler version and architecture, inherited SDKROOT; Browse, Validate, Global / Workspace, Apply, Use Global |
+| Language Server | Starting / Running / Stopped / Error, active toolchain, last failure, pending restart; Restart and Show Output |
+| Package | Package.swift path, actual SwiftPM package name, products and targets; Refresh Package and Open Package.swift |
+| Output | Recent file-log history and live language-server/window messages; Clear |
 
-The compact summary always shows the active toolchain version, active package name, and language-server state. Distinguish the saved selection from the toolchain used by the currently running server when a restart is pending.
+Show Output selects the Output page in the same window. The extension also mirrors new messages into Visual Studio's standard Swift Output pane after its package loads. Clear clears the visible window history; it does not delete the file log.
 
-## Initial window
+## Settings and process behavior
 
-| Section | Visible information | Actions |
-| --- | --- | --- |
-| Toolchain | Version, bin path, architecture, SDK path, validation result, selection scope | Select Toolchain, Add Toolchain, Validate |
-| Language Server | Running / Starting / Stopped / Error, active toolchain, last failure | Restart, Show Log |
-| Package | Package.swift path, detected targets/products, selected executable, Debug / Release | Refresh Package, Open Package.swift |
+Resolution order is workspace `.vs/VisualSwift/settings.json`, global `%LOCALAPPDATA%/VisualSwift/settings.json`, `VISUALSWIFT_TOOLCHAIN`, then PATH. Both executables must exist in the same toolchain bin directory. An invalid saved selection reports an error rather than silently selecting a different compiler.
 
-Persist a global default and an optional workspace override. Label the source of the selection as Global or Workspace. Validation and package inspection run asynchronously with cancellation so the IDE stays responsive.
+Apply validates the candidate before saving. Selecting Workspace requires an open Swift package. Use Global clears the workspace override and restores the normal fallback order. A running server keeps its active toolchain until Restart; the window identifies a pending change. Newly generated project-template wrappers read the same settings. Existing generated projects need an updated Invoke-Swift.ps1 wrapper to use persisted selections.
 
-An unavailable toolchain or SDK appears inline with the specific failed check and a recovery action. Validation also checks whether the active Visual Studio solution platform matches the Swift toolchain architecture, because a mismatched native linker environment prevents package manifest compilation. Selecting a new toolchain validates it before starting dependent operations. Restarting replaces the previous server and must not leave a child process running.
+Validation runs `swift --version`, checks SDKROOT, and compares the active solution platform with the compiler target when a solution configuration is available. SDK environment variables are still inherited from the IDE process; installed SDK/toolchain discovery and automatic environment setup are subsequent work.
 
-## Command integration
+SwiftPM inspection runs `swift package describe --type json`. Subprocess execution has a 30-second timeout and cancellation; Windows job objects terminate owned child processes. Package.swift remains authoritative. Initial package selection follows the active document or solution, with VISUALSWIFT_WORKSPACE available as an explicit override. Multi-package workspace selection remains subsequent work.
 
-After the shared process runner is connected, add Build, Rebuild, Clean, Run, Test, Resolve Dependencies, and Cancel. Run uses the selected executable product; library-only packages do not offer it. Configuration and toolchain are captured when the operation starts and are shown with its result.
+## Validation
 
-Use the standard Swift Output pane for streaming output. Keep a short current-operation summary in the window: action, progress state, elapsed time, exit code, and the latest error. Include Show Output and Copy Diagnostics actions. Prevent conflicting build/clean/test operations for the same package and provide a cancellation result distinct from failure.
+Core checks cover settings priority and persistence, invalid overrides, real compiler validation, process output, nonzero exits, and cancellation. The LSP smoke probe covers editor requests and cross-file search/reference behavior. Visual Studio 2026 on Windows ARM64 is the measured IDE environment; Visual Studio 2022 and x64 still need IDE validation.
 
-Project-template Makefile commands and window commands should converge on the same toolchain/environment resolution rather than growing independent selection rules. Package.swift remains authoritative for package contents.
+On 2026-10-12, the single menu entry, all four sidebar pages, compiler/SDK summary, SwiftPM products/targets, and internal Show Output navigation were verified in the experimental IDE profile. Restart terminated SourceKit-LSP pid 30728, started pid 39608, initialized it, and replayed didOpen for the active Swift document. Settings persistence was verified by the core checks; a full IDE close/reopen selection test and additional theme checks remain open.
 
-## Subsequent features
+## Next stages
 
-Code search uses the IDE's existing LSP integration. A future Search Symbols action in the Swift window/menu should invoke native Go To / Code Search. Do not add a second symbol result provider: the measured IDE already consumes workspace/symbol. Keep Find All References in its standard results pane. See SEARCH.md for measured scope and indexing requirements.
+- SwiftPM Build, Rebuild, Clean, Run, Test, Resolve Dependencies, and Cancel inside this window.
+- Installed toolchain discovery and SDK environment selection.
+- Project properties, package/target hierarchy, and multiple packages.
+- Test Explorer and debugger adapters.
 
-- Installed toolchain discovery and updateable validation results.
-- Package dependency and target hierarchy tied to Solution Explorer.
-- Project properties and workspace-root selection for multi-package solutions.
-- Test Explorer and debugger integration once the corresponding adapters are validated.
-
-## First delivery criteria
-
-- Opening the window immediately identifies the selected toolchain and current package.
-- Selection survives IDE restart and clearly distinguishes global and workspace settings.
-- An invalid path or missing SDK produces an English inline explanation with an actionable selection/validation command.
-- Restart switches the language server to the selected toolchain and reports startup failure without blocking the editor.
-- Package refresh shows real SwiftPM products and targets without duplicating the package model.
-- Theme changes and keyboard navigation work using normal Visual Studio UI conventions.
+Code search continues through native Visual Studio Code Search and Find All References. See [search validation](SEARCH.md).

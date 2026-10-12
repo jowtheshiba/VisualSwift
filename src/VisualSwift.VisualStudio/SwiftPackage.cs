@@ -11,7 +11,7 @@ namespace VisualSwift
 {
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
-    [ProvideToolWindow(typeof(SwiftToolWindow))]
+    [ProvideToolWindow(typeof(SwiftToolWindow), Width = 850, Height = 600)]
     [Guid("dbaf72a8-6a28-4316-a5c4-982085c40c5a")]
     public sealed class SwiftPackage : AsyncPackage
     {
@@ -32,20 +32,6 @@ namespace VisualSwift
             WriteOutput("VisualSwift loaded. File log: " + PrototypeLog.FilePath);
             var menu = await GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
             Add(menu, 0x0101, async () => await ShowSwiftWindowAsync());
-            Add(menu, 0x0102, async () => await ShowSwiftWindowAsync());
-            Add(menu, 0x0103, RestartAsync);
-            Add(menu, 0x0104, ShowOutputAsync);
-            var current = Add(menu, 0x0100, async () => await ShowSwiftWindowAsync());
-            current.BeforeQueryStatus += (_, __) =>
-            {
-                try
-                {
-                    var selection = SwiftSettings.Default.Read(SwiftRuntime.Workspace);
-                    var path = selection.Path ?? Toolchain.Resolve(SwiftRuntime.Workspace).BinDirectory;
-                    current.Text = "Current Toolchain: " + (SwiftRuntime.SelectedVersion?.Split('\n')[0].Trim() ?? path) + " (" + selection.Scope + ")";
-                }
-                catch (Exception) { current.Text = "Current Toolchain: Unavailable"; }
-            };
         }
 
         private OleMenuCommand Add(OleMenuCommandService menu, int id, Func<Task> action)
@@ -58,19 +44,13 @@ namespace VisualSwift
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSTHRD100", Justification = "The menu callback returns void; asynchronous operation errors are handled here.")]
         private async void ExecuteCommand(Func<Task> action)
         {
-                try { await action(); }
-                catch (Exception error)
-                {
-                    PrototypeLog.Write(error.ToString());
-                    await JoinableTaskFactory.SwitchToMainThreadAsync();
-                    VsShellUtilities.ShowMessageBox(this, error.Message, "Swift", OLEMSGICON.OLEMSGICON_WARNING, OLEMSGBUTTON.OLEMSGBUTTON_OK, OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
-                }
-        }
-
-        internal async Task ShowOutputAsync()
-        {
-            await JoinableTaskFactory.SwitchToMainThreadAsync();
-            ShowOutput();
+            try { await action(); }
+            catch (Exception error)
+            {
+                PrototypeLog.Write(error.ToString());
+                await JoinableTaskFactory.SwitchToMainThreadAsync();
+                VsShellUtilities.ShowMessageBox(this, error.Message, "Swift", OLEMSGICON.OLEMSGICON_WARNING, OLEMSGBUTTON.OLEMSGBUTTON_OK, OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
+            }
         }
 
         internal async Task ShowSwiftWindowAsync()
@@ -84,14 +64,6 @@ namespace VisualSwift
             var restart = SwiftRuntime.Restart;
             if (restart == null) throw new InvalidOperationException("Open a Swift file to activate the language server first.");
             await restart();
-        }
-
-        internal void ShowOutput()
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            output.Activate();
-            var dte = GetService(typeof(EnvDTE.DTE)) as EnvDTE.DTE;
-            dte?.ExecuteCommand("View.Output");
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSTHRD010", Justification = "IVsOutputWindowPane.OutputStringThreadSafe explicitly supports background callers.")]
