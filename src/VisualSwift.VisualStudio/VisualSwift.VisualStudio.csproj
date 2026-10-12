@@ -33,6 +33,7 @@
     <Content Include="VisualSwift.pkgdef"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="SwiftDebugger.pkgdef"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="VisualSwift.settings.json"><IncludeInVSIX>true</IncludeInVSIX></Content>
+    <Content Include="Grammars\**\*"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="..\..\LICENSE" Link="LICENSE"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="..\..\NOTICE" Link="NOTICE"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="..\..\assets\icons\visualswift-128.png" Link="Assets\visualswift.png"><IncludeInVSIX>true</IncludeInVSIX></Content>

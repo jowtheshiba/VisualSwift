@@ -110,6 +110,7 @@ try
     var rename = await rpc.Request("textDocument/rename", new { textDocument = new { uri }, position = markerPosition, newName = "welcome" });
     report["rename"] = rename.DeepClone();
     report["renameVerified"] = rename["changes"] != null || rename["documentChanges"] != null;
+    report["renameChecks"] = await RenameChecks.Run(rpc, packageDirectory, args[2]);
 
     await rpc.Notify("textDocument/didChange", new { textDocument = new { uri, version = 2 }, contentChanges = new[] { new { text = source + "\nlet invalidValue: Int = \"wrong\"\n" } } });
     var diagnostics = await rpc.Request("textDocument/diagnostic", new { textDocument = new { uri } });
@@ -149,6 +150,7 @@ finally
 
 sealed class LspSession : IAsyncDisposable
 {
+    public string Executable { get; }
     private readonly Process process;
     private readonly Stream input;
     private readonly Stream output;
@@ -160,6 +162,7 @@ sealed class LspSession : IAsyncDisposable
 
     public LspSession(string executable, string workspace)
     {
+        Executable = executable;
         var info = new ProcessStartInfo(executable)
         {
             WorkingDirectory = workspace, UseShellExecute = false, CreateNoWindow = true,

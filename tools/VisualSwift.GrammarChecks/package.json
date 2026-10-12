@@ -1,0 +1,7 @@
+{
+  "name": "visualswift-grammar-checks",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node check.mjs" },
+  "devDependencies": { "vscode-textmate": "9.2.0", "vscode-oniguruma": "2.0.1" }
+}

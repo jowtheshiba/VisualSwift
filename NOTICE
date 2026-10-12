@@ -2,3 +2,9 @@ VisualSwift
 Copyright 2026 jowtheshiba
 
 Licensed under the Apache License, Version 2.0.
+
+Swift TextMate grammar derives from jtbandes/swift-tmlanguage,
+revision 88500a474365c5bda55588258cb585a1f275529e.
+Copyright 2023 Jacob Bandes-Storch. Licensed under the MIT License.
+The upstream license is distributed in Grammars/LICENSE.swift-tmlanguage.md.
+VisualSwift adaptations are documented in docs/SYNTAX_HIGHLIGHTING.md.

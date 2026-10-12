@@ -1,2 +1,5 @@
 [$RootKey$\OpenFolder\Settings\VSWorkspaceSettings\VisualSwift]
 @="$PackageFolder$\VisualSwift.settings.json"
+
+[$RootKey$\TextMate\Repositories]
+"VisualSwift"="$PackageFolder$\Grammars"

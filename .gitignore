@@ -60,3 +60,4 @@ nunit-*.xml
 .build/
 .swiftpm/
 *.csproj.user
+node_modules/
