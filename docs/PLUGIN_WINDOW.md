@@ -9,6 +9,7 @@ The extension provides one dockable Swift window with a left sidebar. Open it wi
 | Toolchain | Selected directory and selection source, compiler version and architecture, inherited SDKROOT; Browse, Validate, Global / Workspace, Apply, Use Global |
 | Language Server | Starting / Running / Stopped / Error, active toolchain, last failure, pending restart; Restart and Show Output |
 | Package | Package.swift path, actual SwiftPM package name, products and targets; Refresh Package and Open Package.swift |
+| Debug | Executable product, program arguments, Stop on entry, per-package F5 preference; Save and Start Debugging |
 | Output | Recent file-log history and live language-server/window messages; Clear |
 
 Show Output selects the Output page in the same window. The extension also mirrors new messages into Visual Studio's standard Swift Output pane after its package loads. Clear clears the visible window history; it does not delete the file log.
@@ -34,6 +35,8 @@ On 2026-10-12, the single menu entry, all four sidebar pages, compiler/SDK summa
 - SwiftPM Build, Rebuild, Clean, Run, Test, Resolve Dependencies, and Cancel inside this window.
 - Installed toolchain discovery and SDK environment selection.
 - Project properties, package/target hierarchy, and multiple packages.
-- Test Explorer and debugger adapters.
+- Test Explorer and broader debugger support beyond local SwiftPM executables.
 
 Code search continues through native Visual Studio Code Search and Find All References. See [search validation](SEARCH.md).
+
+The Debug page was added and tested on 2026-10-12. The debugger builds using the selected toolchain and displays standard Visual Studio debugger panes. Debug builds have a five-minute timeout; other Swift queries retain their 30-second timeout. See [debugging setup and validation](DEBUGGING.md).

@@ -32,7 +32,7 @@ Run scripts/test-templates.ps1 with an installed vswhere instance ID and the des
 
 ## Scope limits
 
-These templates provide an initial solution-compatible wrapper. A dedicated Swift project factory, Swift project properties, dependency hierarchy, automatic synchronization, standard run commands, debugging, and Test Explorer remain future work.
+These templates provide an initial solution-compatible wrapper. Local executable debugging is available through the Swift window's Debug page, including an optional per-package F5 launch; see [debugging](DEBUGGING.md). A dedicated Swift project factory, Swift project properties, dependency hierarchy, automatic synchronization, standard run commands, and Test Explorer remain future work.
 
 The current LSP prototype supports one package root. Open the package as a folder or set VISUALSWIFT_WORKSPACE before launching the IDE when the solution root differs from the package root. Multi-package language-server sessions are not yet implemented.
 

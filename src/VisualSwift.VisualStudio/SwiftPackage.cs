@@ -12,12 +12,17 @@ namespace VisualSwift
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideToolWindow(typeof(SwiftToolWindow), Width = 850, Height = 600)]
+    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExists_string, PackageAutoLoadFlags.BackgroundLoad)]
+    [ProvideAutoLoad(VSConstants.UICONTEXT.NoSolution_string, PackageAutoLoadFlags.BackgroundLoad)]
     [Guid("dbaf72a8-6a28-4316-a5c4-982085c40c5a")]
     public sealed class SwiftPackage : AsyncPackage
     {
         private static readonly Guid Commands = new Guid("5d796222-e1ce-44f3-9492-5475d8dac383");
         private static readonly Guid OutputId = new Guid("633cce02-6388-48d5-9092-dc5f948703aa");
         private IVsOutputWindowPane output;
+        private IVsRegisterPriorityCommandTarget debugCommands;
+        private uint debugCommandCookie;
+        internal CancellationToken DisposalTokenForDebug => DisposalToken;
         internal static SwiftPackage Instance { get; private set; }
 
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
@@ -32,6 +37,8 @@ namespace VisualSwift
             WriteOutput("VisualSwift loaded. File log: " + PrototypeLog.FilePath);
             var menu = await GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
             Add(menu, 0x0101, async () => await ShowSwiftWindowAsync());
+            debugCommands = await GetServiceAsync(typeof(SVsRegisterPriorityCommandTarget)) as IVsRegisterPriorityCommandTarget;
+            if (debugCommands != null) ErrorHandler.ThrowOnFailure(debugCommands.RegisterPriorityCommandTarget(0, new SwiftDebugCommands(this), out debugCommandCookie));
         }
 
         private OleMenuCommand Add(OleMenuCommandService menu, int id, Func<Task> action)
@@ -75,7 +82,13 @@ namespace VisualSwift
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing) { PrototypeLog.Written -= WriteOutput; Instance = null; }
+            ThreadHelper.ThrowIfNotOnUIThread();
+            if (disposing)
+            {
+                PrototypeLog.Written -= WriteOutput;
+                if (debugCommandCookie != 0) debugCommands?.UnregisterPriorityCommandTarget(debugCommandCookie);
+                Instance = null;
+            }
             base.Dispose(disposing);
         }
     }

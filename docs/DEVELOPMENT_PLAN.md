@@ -129,6 +129,8 @@ This is the first release satisfying the requested project and template scope.
 
 ## Milestone 4: tests and debugging
 
+Debugging implementation on 2026-10-12: selected-toolchain LLDB/DAP launch, Debug sidebar settings, per-package F5, native source breakpoints, Call Stack, Locals, Watch, F10, normal exit, and Stop Debugging were verified on Visual Studio 2026 / Windows ARM64 / Swift 6.4. The default linker loses usable DWARF section names; the launcher uses LLVM with `/debug:dwarf`. The independent DAP probe is reproducible through `scripts/test-debug.ps1`. See [debugging](DEBUGGING.md). Test discovery and Test Explorer are still open, so this milestone is not complete.
+
 Tasks:
 
 - Implement test discovery and execution adapters for supported Swift Testing and XCTest versions.

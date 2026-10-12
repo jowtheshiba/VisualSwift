@@ -24,6 +24,10 @@ namespace VisualSwift
         private readonly TextBlock package = Label();
         private readonly TextBlock metadata = Label();
         private readonly TextBlock message = Label();
+        private readonly ComboBox debugProduct = new ComboBox { MinWidth = 180 };
+        private readonly TextBox debugArguments = new TextBox { Text = "[]" };
+        private readonly CheckBox stopOnEntry = new CheckBox { Content = "Stop on entry", Margin = new Thickness(0, 8, 0, 8) };
+        private readonly CheckBox useF5 = new CheckBox { Content = "Use Swift debugger for F5 in this package", Margin = new Thickness(0, 8, 0, 8) };
         private readonly Grid actions = new Grid();
         private readonly TextBlock summary = Label();
         private readonly ListBox navigation = new ListBox { MinWidth = 150, BorderThickness = new Thickness(0), Margin = new Thickness(0, 0, 12, 0) };
@@ -76,13 +80,28 @@ namespace VisualSwift
             languageServer.Children.Add(active);
             var language = Row(languageServer);
             Button(language, "Restart", _ => SwiftPackage.RestartAsync());
-            Button(language, "Show Output", _ => { navigation.SelectedIndex = 3; return Task.CompletedTask; });
+            Button(language, "Show Output", _ => { navigation.SelectedIndex = 4; return Task.CompletedTask; });
             var packagePage = Page("Package");
             packagePage.Children.Add(package);
             packagePage.Children.Add(metadata);
             var packages = Row(packagePage);
             Button(packages, "Refresh Package", RefreshPackageAsync);
             Button(packages, "Open Package.swift", OpenManifestAsync);
+            var debug = Page("Debug");
+            stopOnEntry.SetResourceReference(ForegroundProperty, EnvironmentColors.ToolWindowTextBrushKey);
+            useF5.SetResourceReference(ForegroundProperty, EnvironmentColors.ToolWindowTextBrushKey);
+            debug.Children.Add(new TextBlock { Text = "Executable product", Margin = new Thickness(0, 8, 0, 4) });
+            debug.Children.Add(debugProduct);
+            debug.Children.Add(new TextBlock { Text = "Program arguments (JSON array)", Margin = new Thickness(0, 8, 0, 4) });
+            debugArguments.SetResourceReference(BackgroundProperty, EnvironmentColors.ToolWindowBackgroundBrushKey);
+            debugArguments.SetResourceReference(ForegroundProperty, EnvironmentColors.ToolWindowTextBrushKey);
+            debug.Children.Add(debugArguments);
+            debug.Children.Add(stopOnEntry);
+            debug.Children.Add(useF5);
+            debug.Children.Add(new TextBlock { Text = "Builds Debug with LLVM/DWARF and opens the standard Visual Studio debugger. Configure breakpoints in the editor before launching.", TextWrapping = TextWrapping.Wrap });
+            var debugging = Row(debug);
+            Button(debugging, "Save", SaveDebugAsync);
+            Button(debugging, "Start Debugging", StartDebugAsync);
             var outputPage = new Grid();
             outputPage.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             outputPage.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -266,6 +285,38 @@ namespace VisualSwift
             var products = (description["products"] as JArray ?? new JArray()).Select(product => product.Value<string>("name") + " (" + (product["type"] as JObject)?.Properties().FirstOrDefault()?.Name + ")");
             var targets = (description["targets"] as JArray ?? new JArray()).Select(target => target.Value<string>("name") + " (" + target.Value<string>("type") + ")");
             metadata.Text = "Name: " + description.Value<string>("name") + Environment.NewLine + "Products: " + string.Join(", ", products) + Environment.NewLine + "Targets: " + string.Join(", ", targets);
+            var saved = await Task.Run(() => SwiftDebugOptions.Read(workspace), token);
+            debugProduct.Items.Clear();
+            foreach (var product in (description["products"] as JArray ?? new JArray()).Where(p => p["type"]?["executable"] != null)) debugProduct.Items.Add(product.Value<string>("name"));
+            if (debugProduct.Items.Contains(saved.Product)) debugProduct.SelectedItem = saved.Product;
+            else if (debugProduct.Items.Count > 0) debugProduct.SelectedIndex = 0;
+            debugArguments.Text = new JArray(saved.Arguments).ToString(Newtonsoft.Json.Formatting.None);
+            stopOnEntry.IsChecked = saved.StopOnEntry;
+            useF5.IsChecked = saved.UseF5;
+        }
+
+        private SwiftDebugOptions DebugOptions()
+        {
+            var arguments = JArray.Parse(debugArguments.Text);
+            if (arguments.Any(value => value.Type != JTokenType.String)) throw new InvalidOperationException("Program arguments must be a JSON array of strings.");
+            return new SwiftDebugOptions { Product = debugProduct.SelectedItem as string, Arguments = arguments.Values<string>().ToArray(), StopOnEntry = stopOnEntry.IsChecked == true, UseF5 = useF5.IsChecked == true };
+        }
+
+        private async Task SaveDebugAsync(CancellationToken token)
+        {
+            var workspace = SwiftRuntime.Workspace;
+            var options = DebugOptions();
+            if (options.Product == null) throw new InvalidOperationException("Select an executable SwiftPM product first.");
+            await Task.Run(() => options.Save(workspace), token);
+            PrototypeLog.Write("Saved Swift debug launch settings.");
+        }
+
+        private async Task StartDebugAsync(CancellationToken token)
+        {
+            var workspace = SwiftRuntime.Workspace;
+            var options = DebugOptions();
+            await SaveDebugAsync(token);
+            await SwiftDebugLauncher.StartAsync(workspace, options, token);
         }
 
         private async Task OpenManifestAsync(CancellationToken token)

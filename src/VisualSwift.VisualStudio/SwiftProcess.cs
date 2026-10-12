@@ -9,7 +9,7 @@ namespace VisualSwift
 {
     internal static class SwiftProcess
     {
-        public static async Task<string> RunAsync(Toolchain toolchain, string arguments, string workspace, CancellationToken token)
+        public static async Task<string> RunAsync(Toolchain toolchain, string arguments, string workspace, CancellationToken token, TimeSpan? timeout = null)
         {
             token.ThrowIfCancellationRequested();
             using (var process = new Process { StartInfo = toolchain.CreateSwiftStartInfo(arguments, workspace), EnableRaisingEvents = true })
@@ -22,12 +22,13 @@ namespace VisualSwift
                 var output = process.StandardOutput.ReadToEndAsync();
                 var error = process.StandardError.ReadToEndAsync();
                 var completed = Task.WhenAll(exited.Task, output, error);
-                var limit = Task.Delay(TimeSpan.FromSeconds(30), token);
+                var duration = timeout ?? TimeSpan.FromSeconds(30);
+                var limit = Task.Delay(duration, token);
                 if (await Task.WhenAny(completed, limit).ConfigureAwait(false) != completed)
                 {
                     job.Dispose();
                     token.ThrowIfCancellationRequested();
-                    throw new TimeoutException("Swift did not respond within 30 seconds.");
+                    throw new TimeoutException("Swift did not respond within " + duration.TotalSeconds + " seconds.");
                 }
                 await completed.ConfigureAwait(false);
                 token.ThrowIfCancellationRequested();

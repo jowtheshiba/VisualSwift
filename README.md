@@ -10,7 +10,7 @@ Install the VSIX and search for `Swift` in File > New > Project. Choose **Swift 
 
 The templates require Visual Studio C++ project support because they use its built-in Makefile project system. Configure the Windows Swift toolchain and SDK environment before launching the IDE. Standard Build/Rebuild/Clean commands delegate to SwiftPM, and Debug/Release controls its build configuration. Platform labels do not select a different Swift architecture. `Package.swift` remains authoritative.
 
-Run console applications with `swift run`; run library tests with `swift test`. The generated `VisualSwift\Invoke-Swift.ps1` also supports Run and Test. F5 debugging and Test Explorer integration are not configured.
+Run console applications with `swift run`; run library tests with `swift test`. The generated `VisualSwift\Invoke-Swift.ps1` also supports Run and Test. For debugging, select an executable on **Extensions > Swift > Debug** and use **Start Debugging**, or enable F5 for that package. Native breakpoints, Call Stack, Locals, Watch, and stepping were verified in Visual Studio 2026 on Windows ARM64. See [debugging](docs/DEBUGGING.md). Test Explorer integration remains open.
 
 See [template implementation and validation](docs/PROJECT_TEMPLATES.md) for requirements and limitations, and [icon assets](assets/README.md) for sources and generation prompts.
 
@@ -21,6 +21,7 @@ Prerequisites: Windows, Visual Studio, .NET SDK 10 for the probe, and an install
 ```powershell
 .\scripts\build.ps1
 .\scripts\test-lsp.ps1
+.\scripts\test-debug.ps1
 .\scripts\test-templates.ps1 -InstanceId YOUR_INSTANCE_ID -Platform ARM64
 ```
 
@@ -40,7 +41,7 @@ Open `Sources\LspSmoke\main.swift` in Solution Explorer. Use Ctrl+Space for comp
 
 Use **Edit > Go To > Go To All** (`Ctrl+,` with the default keyboard mapping) to search Swift symbols through the standard Code Search interface. Open a Swift file first to activate SourceKit-LSP. Search includes indexed files that are not open in the editor; select a result and press Enter to navigate. **Find All References** (`Shift+F12`) uses the same server index. Results can be incomplete while indexing is in progress. See [search validation](docs/SEARCH.md).
 
-Open **Extensions > Swift** for the unified window with Toolchain, Language Server, Package, and Output pages. Save a global toolchain or a workspace override, validate it, and restart the server from the window. See [window behavior and settings](docs/PLUGIN_WINDOW.md). Workspace and global settings take priority over `VISUALSWIFT_TOOLCHAIN`; PATH is the final fallback and must contain both `swift.exe` and `sourcekit-lsp.exe` in one directory. `VISUALSWIFT_WORKSPACE` optionally pins one package root and must contain `Package.swift`; Open Folder supplies a root when the override is absent. Environment variables must be set before launching Visual Studio. SDK variables such as `SDKROOT` are inherited in this prototype.
+Open **Extensions > Swift** for the unified window with Toolchain, Language Server, Package, Debug, and Output pages. Save a global toolchain or a workspace override, validate it, and restart the server from the window. See [window behavior and settings](docs/PLUGIN_WINDOW.md). Workspace and global settings take priority over `VISUALSWIFT_TOOLCHAIN`; PATH is the final fallback and must contain both `swift.exe` and `sourcekit-lsp.exe` in one directory. `VISUALSWIFT_WORKSPACE` optionally pins one package root and must contain `Package.swift`; Open Folder supplies a root when the override is absent. Environment variables must be set before launching Visual Studio. SDK variables such as `SDKROOT` are inherited in this prototype.
 
 Development logs are written to `%TEMP%\VisualSwift\client-<pid>.log`. They include protocol results and local paths. See [prototype validation](docs/PROTOTYPE_VALIDATION.md) for measured compatibility, technical decisions, and remaining checks.
 

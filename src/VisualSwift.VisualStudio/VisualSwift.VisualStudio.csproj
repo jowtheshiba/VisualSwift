@@ -31,6 +31,7 @@
     <VSCTCompile Include="Commands.vsct"><ResourceName>Menus.ctmenu</ResourceName></VSCTCompile>
     <Content Include="source.extension.vsixmanifest" />
     <Content Include="VisualSwift.pkgdef"><IncludeInVSIX>true</IncludeInVSIX></Content>
+    <Content Include="SwiftDebugger.pkgdef"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="VisualSwift.settings.json"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="..\..\LICENSE" Link="LICENSE"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="..\..\NOTICE" Link="NOTICE"><IncludeInVSIX>true</IncludeInVSIX></Content>
