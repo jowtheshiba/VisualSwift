@@ -35,8 +35,13 @@ foreach ($template in @('SwiftConsole', 'SwiftLibrary')) {
         [System.IO.File]::WriteAllText($file, $text, (New-Object System.Text.UTF8Encoding($false)))
     }
     $project = Join-Path $destination "$name.vcxproj"
+    if ($template -eq 'SwiftConsole') {
+        $projectText = [IO.File]::ReadAllText($project)
+        if (!$projectText.Contains("$name.exe</NMakeOutput>") -or !$projectText.Contains('<LocalDebuggerCommand>$(NMakeOutput)</LocalDebuggerCommand>')) { throw 'The console launch target must be the Swift executable.' }
+    }
     & $msbuild $project /t:Build /p:Configuration=Debug "/p:Platform=$Platform" /v:minimal /nologo
     if ($LASTEXITCODE -ne 0) { throw "$template Debug build failed." }
+    if ($template -eq 'SwiftConsole' -and !(Test-Path -LiteralPath (Join-Path $destination ".build\debug\$name.exe") -PathType Leaf)) { throw 'The declared console launch executable does not exist.' }
     & $msbuild $project /t:Rebuild /p:Configuration=Release "/p:Platform=$Platform" /v:minimal /nologo
     if ($LASTEXITCODE -ne 0) { throw "$template Release rebuild failed." }
     $action = if ($template -eq 'SwiftConsole') { 'Run' } else { 'Test' }

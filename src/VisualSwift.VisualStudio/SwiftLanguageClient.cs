@@ -38,6 +38,7 @@ namespace VisualSwift
         {
             SwiftRuntime.Restart = RestartServerAsync;
             PrototypeLog.Write("Language client loaded.");
+            await SwiftPackage.EnsureLoadedAsync();
             if (StartAsync != null)
                 await StartAsync.InvokeAsync(this, EventArgs.Empty);
         }

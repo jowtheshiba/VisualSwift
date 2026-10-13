@@ -32,9 +32,14 @@ namespace VisualSwift
         public int QueryStatus(ref Guid group, uint count, OLECMD[] commands, IntPtr text)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (count != 1 || !CanHandle(ref group, commands[0].cmdID, out _, out _)) return (int)Microsoft.VisualStudio.OLE.Interop.Constants.OLECMDERR_E_NOTSUPPORTED;
-            commands[0].cmdf = (uint)OLECMDF.OLECMDF_SUPPORTED | (SwiftDebugLauncher.IsPreparing ? 0 : (uint)OLECMDF.OLECMDF_ENABLED);
-            return VSConstants.S_OK;
+            var handled = false;
+            for (var index = 0; index < count; index++)
+            {
+                if (!CanHandle(ref group, commands[index].cmdID, out _, out _)) continue;
+                commands[index].cmdf = (uint)OLECMDF.OLECMDF_SUPPORTED | (SwiftDebugLauncher.IsPreparing ? 0 : (uint)OLECMDF.OLECMDF_ENABLED);
+                handled = true;
+            }
+            return handled ? VSConstants.S_OK : (int)Microsoft.VisualStudio.OLE.Interop.Constants.OLECMDERR_E_NOTSUPPORTED;
         }
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSSDK007", Justification = "The synchronous OLE callback schedules a launch with the package disposal token; failures are caught and the task is tracked by FileAndForget.")]
         public int Exec(ref Guid group, uint id, uint options, IntPtr input, IntPtr output)

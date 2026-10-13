@@ -51,6 +51,17 @@ namespace VisualSwift
             Add(menu, 0x0101, async () => await ShowSwiftWindowAsync());
             debugCommands = await GetServiceAsync(typeof(SVsRegisterPriorityCommandTarget)) as IVsRegisterPriorityCommandTarget;
             if (debugCommands != null) ErrorHandler.ThrowOnFailure(debugCommands.RegisterPriorityCommandTarget(0, new SwiftDebugCommands(this), out debugCommandCookie));
+            PrototypeLog.Write("Swift package initialized; debug command target=" + debugCommandCookie);
+        }
+
+        internal static async Task EnsureLoadedAsync()
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (Instance?.debugCommandCookie > 0) return;
+            var shell = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(SVsShell)) as IVsShell
+                ?? throw new InvalidOperationException("Visual Studio package loading is unavailable.");
+            var id = typeof(SwiftPackage).GUID;
+            ErrorHandler.ThrowOnFailure(shell.LoadPackage(ref id, out _));
         }
 
         private OleMenuCommand Add(OleMenuCommandService menu, int id, Func<Task> action)

@@ -26,7 +26,9 @@
     <NMakeBuildCommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ProjectDir)VisualSwift\Invoke-Swift.ps1" -Command Build -Configuration "$(Configuration)"</NMakeBuildCommandLine>
     <NMakeReBuildCommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ProjectDir)VisualSwift\Invoke-Swift.ps1" -Command Rebuild -Configuration "$(Configuration)"</NMakeReBuildCommandLine>
     <NMakeCleanCommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ProjectDir)VisualSwift\Invoke-Swift.ps1" -Command Clean -Configuration "$(Configuration)"</NMakeCleanCommandLine>
-    <NMakeOutput>$(ProjectDir).build\$(SwiftConfiguration)\</NMakeOutput>
+    <NMakeOutput>$(ProjectDir).build\$(SwiftConfiguration)\$safeprojectname$.exe</NMakeOutput>
+    <LocalDebuggerCommand>$(NMakeOutput)</LocalDebuggerCommand>
+    <LocalDebuggerWorkingDirectory>$(ProjectDir)</LocalDebuggerWorkingDirectory>
   </PropertyGroup>
   <ItemGroup>
     <None Include="Package.swift" />

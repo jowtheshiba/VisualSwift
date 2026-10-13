@@ -48,6 +48,8 @@ Search for **Swift** in **File > New > Project** to create a console application
 
 New console projects enable Swift debugging through F5 and the standard Start button automatically. For an existing project, select an executable on the Debug page, save its options, and enable F5 for the package or use Start Debugging. Debug builds use LLVM/DWARF for LLDB on Windows. Tests use the package's selected toolchain and inherited SDK environment.
 
+Opening a Swift source file loads the Swift command package before starting the language server. Console templates set `NMakeOutput` and `LocalDebuggerCommand` to `.build\$(SwiftConfiguration)\<project-name>.exe`. If an older console project reports Access is denied when starting `.build\debug\`, update its `NMakeOutput` to include the executable filename, then reopen the project. Open **Extensions > Swift** once as a workaround with the earlier installer.
+
 VisualSwift initializes MSVC libraries and Windows SDK build variables for the selected Swift compiler's actual architecture. An ARM64 Swift compiler must use ARM64 MSVC runtime libraries even when the Makefile project platform is labeled x64. Projects created with the earlier 1.0 package need the updated `templates/Shared/Invoke-Swift.ps1` and `templates/Shared/WindowsSwiftEnvironment.ps1` copied into their `VisualSwift` directory. If the earlier 1.0 package is installed, uninstall it before installing this corrected package with the same version number.
 
 ## Build and verification
