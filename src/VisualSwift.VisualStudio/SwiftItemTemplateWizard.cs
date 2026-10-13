@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using EnvDTE;
@@ -15,33 +14,40 @@ namespace VisualSwift
     {
         private DTE dte;
         private Project project;
-        private string destination;
+        private string selectedPath;
 
         public void RunStarted(object automationObject, Dictionary<string, string> replacementsDictionary, WizardRunKind runKind, object[] customParams)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             PrototypeLog.Write("Swift item wizard started.");
-            dte = (DTE)automationObject;
-            var selection = dte.SelectedItems.Count == 1 ? dte.SelectedItems.Item(1) : null;
-            project = selection?.Project ?? selection?.ProjectItem?.ContainingProject;
-            if (project == null && dte.ActiveSolutionProjects is Array projects && projects.Length == 1)
-                project = projects.GetValue(0) as Project;
-            var root = SwiftWorkspace.FindPackage(project?.FullName);
+            dte = automationObject as DTE ?? Package.GetGlobalService(typeof(DTE)) as DTE;
+            PrototypeLog.Write("Swift item automation context: " + (automationObject?.GetType().FullName ?? "null"));
+            if (dte == null) return;
+            try
+            {
+                var selection = dte.SelectedItems.Count == 1 ? dte.SelectedItems.Item(1) : null;
+                if (selection?.ProjectItem != null) selectedPath = ItemPath(selection.ProjectItem);
+            }
+            catch (System.Runtime.InteropServices.COMException error) { PrototypeLog.Write("Swift item selection: " + error.Message); }
+        }
+
+        private string ResolveDestination(ProjectItem item)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            project = item.ContainingProject;
+            var root = SwiftWorkspace.FindPackage(project.FullName);
             if (root == null) throw new InvalidOperationException("Select a SwiftPM project containing Package.swift before adding a Swift file.");
             var directories = new[] { "Sources", "Tests" }.Select(name => Path.Combine(root, name)).Where(Directory.Exists).SelectMany(Directory.GetDirectories).ToArray();
             if (directories.Length == 0) throw new InvalidOperationException("The package has no Sources or Tests target folder. Create a SwiftPM target first.");
-            var selectedPath = selection?.ProjectItem == null ? null : ItemPath(selection.ProjectItem);
             var selectedDirectory = selectedPath == null ? null : Directory.Exists(selectedPath) ? selectedPath : Path.GetDirectoryName(selectedPath);
             var directory = directories.FirstOrDefault(path => selectedDirectory != null && (string.Equals(path, selectedDirectory, StringComparison.OrdinalIgnoreCase) || selectedDirectory.StartsWith(path + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)));
             if (directory != null) directory = selectedDirectory;
             else directory = directories.Length == 1 ? directories[0] : SelectTarget(root, directories);
-            var name = replacementsDictionary.TryGetValue("$rootname$", out var rootName) ? rootName : replacementsDictionary["$fileinputname$"];
+            var name = Path.GetFileName(item.FileNames[1]);
             if (!name.EndsWith(".swift", StringComparison.OrdinalIgnoreCase)) name += ".swift";
             if (Path.GetFileName(name) != name || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
                 throw new InvalidOperationException("Enter a Swift filename without a directory path.");
-            destination = Path.Combine(directory, name);
-            if (File.Exists(destination)) throw new InvalidOperationException("A file with this name already exists in the selected target: " + destination);
-            CreateItem();
+            return Path.Combine(directory, name);
         }
 
         private static string ItemPath(ProjectItem item)
@@ -71,11 +77,18 @@ namespace VisualSwift
             return directories[targets.SelectedIndex];
         }
 
-        private void CreateItem()
+        private void PlaceItem(ProjectItem generatedItem)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            using (var stream = new FileStream(destination, FileMode.CreateNew, FileAccess.Write))
-            using (var writer = new StreamWriter(stream, new UTF8Encoding(false))) writer.WriteLine();
+            var source = generatedItem.FileNames[1];
+            var destination = ResolveDestination(generatedItem);
+            PrototypeLog.Write("Swift item generated: " + source + "; target: " + destination);
+            if (string.Equals(Path.GetFullPath(source), Path.GetFullPath(destination), StringComparison.OrdinalIgnoreCase))
+            {
+                generatedItem.Open().Activate();
+                return;
+            }
+            if (File.Exists(destination)) throw new IOException("A file with this name already exists in the selected target: " + destination);
             var root = Path.GetDirectoryName(project.FullName);
             var relativeDirectory = Path.GetDirectoryName(destination).Substring(root.TrimEnd(Path.DirectorySeparatorChar).Length + 1);
             var items = project.ProjectItems;
@@ -85,13 +98,15 @@ namespace VisualSwift
                 if (group == null) group = items.AddFolder(folder);
                 items = group.ProjectItems;
             }
+            File.Move(source, destination);
+            generatedItem.Remove();
             var item = items.AddFromFile(destination);
             item.Open().Activate();
             PrototypeLog.Write("Swift item added: " + destination);
         }
 
         public void RunFinished() { }
-        public bool ShouldAddProjectItem(string filePath) => false;
+        public bool ShouldAddProjectItem(string filePath) => true;
         private static ProjectItem FindGroup(ProjectItems items, string name)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
@@ -101,6 +116,16 @@ namespace VisualSwift
         }
         public void BeforeOpeningFile(ProjectItem projectItem) { }
         public void ProjectFinishedGenerating(Project generatedProject) { }
-        public void ProjectItemFinishedGenerating(ProjectItem projectItem) { }
+        public void ProjectItemFinishedGenerating(ProjectItem projectItem)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            try { PlaceItem(projectItem); }
+            catch (Exception error)
+            {
+                PrototypeLog.Write("Swift item creation failed: " + error);
+                MessageBox.Show("The source file was created at " + projectItem.FileNames[1] + ", but could not be placed in the SwiftPM target. " + error.Message, "Swift File", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw;
+            }
+        }
     }
 }

@@ -10,7 +10,7 @@
     <SortOrder>10</SortOrder>
   </TemplateData>
   <TemplateContent>
-    <ProjectItem ReplaceParameters="false" TargetFileName="$fileinputname$.swift">SwiftFile.swift</ProjectItem>
+    <ProjectItem ReplaceParameters="false" OpenInEditor="false">SwiftFile.swift</ProjectItem>
   </TemplateContent>
   <WizardExtension>
     <Assembly>VisualSwift.VisualStudio, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null</Assembly>
