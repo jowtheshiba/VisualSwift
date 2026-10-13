@@ -20,6 +20,7 @@ namespace VisualSwift
         public void RunStarted(object automationObject, Dictionary<string, string> replacementsDictionary, WizardRunKind runKind, object[] customParams)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
+            PrototypeLog.Write("Swift item wizard started.");
             dte = (DTE)automationObject;
             var selection = dte.SelectedItems.Count == 1 ? dte.SelectedItems.Item(1) : null;
             project = selection?.Project ?? selection?.ProjectItem?.ContainingProject;
@@ -40,6 +41,7 @@ namespace VisualSwift
                 throw new InvalidOperationException("Enter a Swift filename without a directory path.");
             destination = Path.Combine(directory, name);
             if (File.Exists(destination)) throw new InvalidOperationException("A file with this name already exists in the selected target: " + destination);
+            CreateItem();
         }
 
         private static string ItemPath(ProjectItem item)
@@ -69,10 +71,9 @@ namespace VisualSwift
             return directories[targets.SelectedIndex];
         }
 
-        public void RunFinished()
+        private void CreateItem()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (destination == null) return;
             using (var stream = new FileStream(destination, FileMode.CreateNew, FileAccess.Write))
             using (var writer = new StreamWriter(stream, new UTF8Encoding(false))) writer.WriteLine();
             var root = Path.GetDirectoryName(project.FullName);
@@ -89,6 +90,7 @@ namespace VisualSwift
             PrototypeLog.Write("Swift item added: " + destination);
         }
 
+        public void RunFinished() { }
         public bool ShouldAddProjectItem(string filePath) => false;
         private static ProjectItem FindGroup(ProjectItems items, string name)
         {
