@@ -21,6 +21,7 @@ namespace VisualSwift
         private SwiftProcessJob serverJob;
         private JsonRpc customRpc;
         private SwiftFileWatcher fileWatcher;
+        private CancellationTokenSource fileRefresh;
         private readonly SemaphoreSlim restartGate = new SemaphoreSlim(1);
         private readonly SwiftMiddleLayer middleLayer = new SwiftMiddleLayer();
 
@@ -92,6 +93,7 @@ namespace VisualSwift
             {
                 var rpc = customRpc;
                 fileWatcher = new SwiftFileWatcher(middleLayer.Workspace, changes => rpc.NotifyWithParameterObjectAsync("workspace/didChangeWatchedFiles", changes));
+                fileWatcher.StructureChanged = QueueFileRefresh;
                 middleLayer.FlushFileChanges = fileWatcher.FlushAsync;
             }
             return Task.CompletedTask;
@@ -116,6 +118,26 @@ namespace VisualSwift
 
         public void Dispose() => DisposeServer();
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSSDK007", Justification = "The refresh task is tracked by FileAndForget, catches failures and is cancelled when the server is disposed.")]
+        private void QueueFileRefresh()
+        {
+            var cancellation = new CancellationTokenSource();
+            Interlocked.Exchange(ref fileRefresh, cancellation)?.Cancel();
+            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            {
+                try
+                {
+                    await Task.Delay(1000, cancellation.Token);
+                    if (Interlocked.CompareExchange(ref fileRefresh, null, cancellation) != cancellation) return;
+                    PrototypeLog.Write("Refreshing SourceKit-LSP after Swift source files were added, removed or renamed.");
+                    await RestartServerAsync();
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception error) { PrototypeLog.Write("Swift source file refresh failed: " + error.Message); }
+                finally { cancellation.Dispose(); }
+            }).FileAndForget("VisualSwift/SourceFileRefresh");
+        }
+
         private async Task RestartServerAsync()
         {
             await restartGate.WaitAsync();
@@ -132,6 +154,7 @@ namespace VisualSwift
         private void DisposeServer()
         {
             middleLayer.FlushFileChanges = null;
+            Interlocked.Exchange(ref fileRefresh, null)?.Cancel();
             Interlocked.Exchange(ref fileWatcher, null)?.Dispose();
             customRpc = null;
             var process = Interlocked.Exchange(ref server, null);
@@ -195,7 +218,7 @@ namespace VisualSwift
             PrototypeLog.Write("request " + methodName);
             var hints = methodName == "textDocument/inlayHint" ? SwiftSettings.Default.ReadInlayHints(Workspace) : null;
             if (hints != null && !hints.Enabled) return new JArray();
-            if ((methodName == "textDocument/prepareRename" || methodName == "textDocument/rename") && FlushFileChanges != null)
+            if (methodName.StartsWith("textDocument/", StringComparison.Ordinal) && FlushFileChanges != null)
                 await FlushFileChanges();
             JToken result;
             try { result = await sendRequest(methodParam); }

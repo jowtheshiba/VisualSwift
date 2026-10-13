@@ -4,6 +4,12 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
+if (args.Length == 4 && args[3] == "new-file")
+{
+    await NewFileChecks.Run(args[0], args[1], args[2]);
+    return;
+}
+
 if (args.Length != 3)
     throw new ArgumentException("Usage: VisualSwift.LspProbe <sourcekit-lsp.exe> <package-directory> <report.json>");
 

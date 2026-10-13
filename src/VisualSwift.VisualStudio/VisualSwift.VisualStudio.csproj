@@ -45,6 +45,7 @@
     <Content Include="..\..\assets\icons\visualswift.ico" Link="Assets\visualswift.ico"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="$(IntermediateOutputPath)ProjectTemplates\SwiftConsole.zip" Link="ProjectTemplates\SwiftConsole.zip"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="$(IntermediateOutputPath)ProjectTemplates\SwiftLibrary.zip" Link="ProjectTemplates\SwiftLibrary.zip"><IncludeInVSIX>true</IncludeInVSIX></Content>
+    <Content Include="$(IntermediateOutputPath)ItemTemplates\SwiftFile.zip" Link="ItemTemplates\SwiftFile.zip"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="..\VisualSwift.TestAdapter\bin\$(Configuration)\net472\VisualSwift.TestAdapter.dll" Link="TestAdapter\VisualSwift.TestAdapter.dll"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="..\VisualSwift.TestAdapter\bin\$(Configuration)\net472\Newtonsoft.Json.dll" Link="TestAdapter\Newtonsoft.Json.dll"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="..\VisualSwift.TestAdapter\LICENSE.Newtonsoft.Json.md" Link="TestAdapter\LICENSE.Newtonsoft.Json.md"><IncludeInVSIX>true</IncludeInVSIX></Content>
@@ -70,6 +71,11 @@
     <Copy SourceFiles="..\..\templates\Shared\WindowsSwiftEnvironment.ps1;..\..\templates\Shared\WindowsSwiftEnvironment.ps1" DestinationFiles="$(IntermediateOutputPath)TemplateStaging\SwiftConsole\VisualSwift\WindowsSwiftEnvironment.ps1;$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\VisualSwift\WindowsSwiftEnvironment.ps1" />
     <Copy SourceFiles="..\..\templates\Shared\gitignore.txt;..\..\assets\icons\swift-library.ico;..\..\templates\Shared\Invoke-Swift.ps1" DestinationFiles="$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\gitignore.txt;$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\template.ico;$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\VisualSwift\Invoke-Swift.ps1" />
     <MakeDir Directories="$(IntermediateOutputPath)ProjectTemplates" />
+    <ItemGroup><SwiftItemFiles Include="$(MSBuildProjectDirectory)\..\..\templates\SwiftFile\*" /></ItemGroup>
+    <Copy SourceFiles="@(SwiftItemFiles)" DestinationFiles="@(SwiftItemFiles->'$(IntermediateOutputPath)TemplateStaging\SwiftFile\%(Filename)%(Extension)')" />
+    <Copy SourceFiles="..\..\assets\icons\swift-console.ico" DestinationFiles="$(IntermediateOutputPath)TemplateStaging\SwiftFile\template.ico" />
+    <MakeDir Directories="$(IntermediateOutputPath)ItemTemplates" />
+    <ZipDirectory SourceDirectory="$(IntermediateOutputPath)TemplateStaging\SwiftFile" DestinationFile="$(IntermediateOutputPath)ItemTemplates\SwiftFile.zip" Overwrite="true" />
     <ZipDirectory SourceDirectory="$(IntermediateOutputPath)TemplateStaging\SwiftConsole" DestinationFile="$(IntermediateOutputPath)ProjectTemplates\SwiftConsole.zip" Overwrite="true" />
     <ZipDirectory SourceDirectory="$(IntermediateOutputPath)TemplateStaging\SwiftLibrary" DestinationFile="$(IntermediateOutputPath)ProjectTemplates\SwiftLibrary.zip" Overwrite="true" />
   </Target>

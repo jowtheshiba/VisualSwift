@@ -17,6 +17,7 @@
   <TemplateContent>
     <Project File="Swift.vcxproj" TargetFileName="$projectname$.vcxproj" ReplaceParameters="true">
       <ProjectItem ReplaceParameters="true" TargetFileName="Package.swift">Package.swift</ProjectItem>
+      <ProjectItem ReplaceParameters="false" TargetFileName="$projectname$.vcxproj.filters">Swift.vcxproj.filters</ProjectItem>
       <ProjectItem ReplaceParameters="false" TargetFileName=".gitignore">gitignore.txt</ProjectItem>
       <ProjectItem ReplaceParameters="false" OpenInEditor="true" TargetFileName="Sources\App\main.swift">Sources\App\main.swift</ProjectItem>
       <ProjectItem ReplaceParameters="false" TargetFileName="VisualSwift\Invoke-Swift.ps1">VisualSwift\Invoke-Swift.ps1</ProjectItem>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Sources" />
+    <Filter Include="Sources\Library" />
+    <Filter Include="Tests" />
+    <Filter Include="Tests\LibraryTests" />
+    <Filter Include="VisualSwift" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Sources\Library\Greeter.swift"><Filter>Sources\Library</Filter></None>
+    <None Include="Tests\LibraryTests\GreeterTests.swift"><Filter>Tests\LibraryTests</Filter></None>
+    <None Include="VisualSwift\Invoke-Swift.ps1"><Filter>VisualSwift</Filter></None>
+    <None Include="VisualSwift\WindowsSwiftEnvironment.ps1"><Filter>VisualSwift</Filter></None>
+  </ItemGroup>
+</Project>

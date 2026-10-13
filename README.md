@@ -36,6 +36,7 @@ To uninstall, open **Extensions > Manage Extensions > Installed**, select **Visu
 - Manual Format Document (`Ctrl+K, Ctrl+D`) and Format Selection (`Ctrl+K, Ctrl+F`), respecting `.swift-format` and editor Undo. Format on Save is not implemented.
 - SwiftPM tests through native Test Explorer: XCTest and Swift Testing, Run All/Selected, outcomes, assertion details and output. Parameterized Swift Testing cases appear as one test item. Test debugging and coverage are not implemented.
 - Swift Console Application and Swift Library project templates with Build/Rebuild/Clean integration.
+- Swift File item template through **Add > New Item**: creates the file in a SwiftPM source or test target, adds it to Solution Explorer and opens the editor. Select a source file or target folder to reuse its directory; packages with multiple targets prompt for a target.
 - LLDB debugging with F5, breakpoints, stepping, Call Stack, Locals and Watch.
 
 Open **Extensions > Swift** for the unified window with Toolchain, Language Server, Package, Debug, and Output pages. Select and validate a toolchain, manage the server, configure hints, inspect the package, and select a debugging product.
@@ -45,6 +46,8 @@ Toolchain selection uses workspace settings, then global settings, then `VISUALS
 `VISUALSWIFT_WORKSPACE` optionally pins one package root containing `Package.swift`. Otherwise the active document or solution supplies the package context. The extension currently operates on one active package. Allow indexing to finish before cross-file navigation or refactoring.
 
 Search for **Swift** in **File > New > Project** to create a console application or library. Templates use the Visual Studio Makefile project system; `Package.swift` remains authoritative. Debug/Release selects the SwiftPM build configuration. The platform label does not switch the Swift compiler architecture.
+
+New projects group files under Sources, Tests and VisualSwift in Solution Explorer. For existing source files, use **Add > Existing Item**; SwiftPM compiles files inside its target directories regardless of the Visual Studio item list. Creating, removing or renaming Swift source files automatically refreshes SourceKit-LSP after a short debounce to discard stale target information. Editing and saving existing files does not restart the server. F12 opens a declaration; if the server returns several locations, double-click the desired row in the results panel.
 
 New console projects enable Swift debugging through F5 and the standard Start button automatically. For an existing project, select an executable on the Debug page, save its options, and enable F5 for the package or use Start Debugging. Debug builds use LLVM/DWARF for LLDB on Windows. Tests use the package's selected toolchain and inherited SDK environment.
 
