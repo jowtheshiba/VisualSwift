@@ -32,7 +32,6 @@
     <None Include="Package.swift" />
     <None Include="Sources\Library\Greeter.swift" />
     <None Include="Tests\LibraryTests\GreeterTests.swift" />
-    <None Include="README.md" />
     <None Include=".gitignore" />
     <None Include="VisualSwift\Invoke-Swift.ps1" />
   </ItemGroup>

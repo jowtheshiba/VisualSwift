@@ -17,7 +17,6 @@
   <TemplateContent>
     <Project File="Swift.vcxproj" TargetFileName="$projectname$.vcxproj" ReplaceParameters="true">
       <ProjectItem ReplaceParameters="true" TargetFileName="Package.swift">Package.swift</ProjectItem>
-      <ProjectItem ReplaceParameters="false" TargetFileName="README.md">README.md</ProjectItem>
       <ProjectItem ReplaceParameters="false" TargetFileName=".gitignore">gitignore.txt</ProjectItem>
       <ProjectItem ReplaceParameters="false" OpenInEditor="true" TargetFileName="Sources\Library\Greeter.swift">Sources\Library\Greeter.swift</ProjectItem>
       <ProjectItem ReplaceParameters="false" TargetFileName="Tests\LibraryTests\GreeterTests.swift">Tests\LibraryTests\GreeterTests.swift</ProjectItem>

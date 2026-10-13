@@ -7,7 +7,7 @@ Swift TextMate grammar derives from jtbandes/swift-tmlanguage,
 revision 88500a474365c5bda55588258cb585a1f275529e.
 Copyright 2023 Jacob Bandes-Storch. Licensed under the MIT License.
 The upstream license is distributed in Grammars/LICENSE.swift-tmlanguage.md.
-VisualSwift adaptations are documented in docs/SYNTAX_HIGHLIGHTING.md.
+VisualSwift includes adaptations for Swift typed throws and module selectors.
 
 The SwiftPM test adapter bundles Newtonsoft.Json 13.0.3.
 Copyright (c) 2007 James Newton-King. Licensed under the MIT License.

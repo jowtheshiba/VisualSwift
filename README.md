@@ -1,72 +1,80 @@
 # VisualSwift
 
+Version **1.0**.
+
 Swift language support for Microsoft Visual Studio on Windows, powered by SourceKit-LSP and Swift Package Manager.
 
-The repository contains a working development VSIX. Completion, Quick Info, Go To Definition, and editor diagnostics have been verified in Visual Studio 2026 on Windows ARM64 with Swift 6.4. Swift Console Application and Swift Library templates now provide a SwiftPM package inside a Visual Studio Makefile project, with Build/Rebuild/Clean integration. A single Swift window provides toolchain selection, language-server management, package inspection, and output through a sidebar. A dedicated Swift project system remains subsequent work.
+## Installation
 
-## Project templates
+Build Release installers with:
 
-Install the VSIX and search for `Swift` in File > New > Project. Choose **Swift Console Application** or **Swift Library**. The library includes a public API and an XCTest example. Each template has a generated icon; the extension has its own VisualSwift icon.
+```powershell
+.\scripts\build-installers.ps1
+```
 
-The templates require Visual Studio C++ project support because they use its built-in Makefile project system. Configure the Windows Swift toolchain and SDK environment before launching the IDE. Standard Build/Rebuild/Clean commands delegate to SwiftPM, and Debug/Release controls its build configuration. Platform labels do not select a different Swift architecture. `Package.swift` remains authoritative.
+Packages are written to `artifacts/installers`:
 
-Run console applications with `swift run`; use **Test > Test Explorer** for SwiftPM test discovery, Run All, Run Selected and results. XCTest and Swift Testing are supported; see [Test Explorer](docs/TEST_EXPLORER.md). The generated `VisualSwift\Invoke-Swift.ps1` also supports Run and Test. For debugging, select an executable on **Extensions > Swift > Debug** and use **Start Debugging**, or enable F5 for that package. Native breakpoints, Call Stack, Locals, Watch, and stepping were verified in Visual Studio 2026 on Windows ARM64. See [debugging](docs/DEBUGGING.md).
+- `VisualSwift-1.0.0-universal.vsix` for ARM64 and x86_64.
+- `VisualSwift-1.0.0-arm64.vsix` for ARM64.
+- `VisualSwift-1.0.0-x86_64.vsix` for x86_64.
 
-See [template implementation and validation](docs/PROJECT_TEMPLATES.md) for requirements and limitations, and [icon assets](assets/README.md) for sources and generation prompts.
+Choose one package, close Visual Studio, double-click the VSIX, and select the target IDE instance. All variants share one extension identity and support upgrades from earlier versions. SHA-256 checksums and package validation results are included alongside the installers. Packages are unsigned; VSIX Installer may show an unverified publisher.
 
-## Build and test
+The manifest targets Visual Studio Community, Professional, and Enterprise 17.14 through 18.x. The measured runtime environment is Visual Studio 2026 on Windows ARM64 with Swift 6.4. Visual Studio 2022 and x86_64 runtime compatibility have not been verified.
 
-Prerequisites: Windows, Visual Studio, .NET SDK 10 for the probe, and an installed Windows Swift toolchain with its SDK environment configured. The extension targets .NET Framework 4.7.2; its SDK and build tools are pinned NuGet dependencies.
+Install the matching Windows Swift toolchain and SDK separately and configure their environment before launching Visual Studio. Swift executables are not bundled. Project templates additionally require Visual Studio C++ project support; existing packages can be edited using Open Folder.
+
+Uninstall through Visual Studio's extension management window and restart the IDE.
+
+## Features
+
+- Completion, Quick Info, diagnostics, Swift syntax highlighting, Go To Definition, and Find All References.
+- Native Code Search for indexed Swift symbols, including unopened files.
+- Native Rename with cross-file edits and background indexing.
+- Signature Help with `Ctrl+Shift+Space`, Go To Implementation, and Go To Type Definition.
+- Inlay Hints settings on the Language Server page. Swift 6.4 SourceKit-LSP provides inferred types; parameter hints depend on toolchain support.
+- Manual Format Document (`Ctrl+K, Ctrl+D`) and Format Selection (`Ctrl+K, Ctrl+F`), respecting `.swift-format` and editor Undo. Format on Save is not implemented.
+- SwiftPM tests through native Test Explorer: XCTest and Swift Testing, Run All/Selected, outcomes, assertion details and output. Parameterized Swift Testing cases appear as one test item. Test debugging and coverage are not implemented.
+- Swift Console Application and Swift Library project templates with Build/Rebuild/Clean integration.
+- LLDB debugging with F5, breakpoints, stepping, Call Stack, Locals and Watch.
+
+Open **Extensions > Swift** for the unified window with Toolchain, Language Server, Package, Debug, and Output pages. Select and validate a toolchain, manage the server, configure hints, inspect the package, and select a debugging product.
+
+Toolchain selection uses workspace settings, then global settings, then `VISUALSWIFT_TOOLCHAIN`, then PATH. Settings are stored in `<package>\.vs\VisualSwift\settings.json` and `%LOCALAPPDATA%\VisualSwift\settings.json`. Restart the server after changing its toolchain. SDK variables such as `SDKROOT` are inherited from the IDE process.
+
+`VISUALSWIFT_WORKSPACE` optionally pins one package root containing `Package.swift`. Otherwise the active document or solution supplies the package context. The extension currently operates on one active package. Allow indexing to finish before cross-file navigation or refactoring.
+
+Search for **Swift** in **File > New > Project** to create a console application or library. Templates use the Visual Studio Makefile project system; `Package.swift` remains authoritative. Debug/Release selects the SwiftPM build configuration. The platform label does not switch the Swift compiler architecture.
+
+For debugging, select an executable on the Debug page, save its options, and enable F5 for the package or use Start Debugging. Debug builds use LLVM/DWARF for LLDB on Windows. Tests use the package's selected toolchain and inherited SDK environment.
+
+## Build and verification
+
+Building requires Windows, Visual Studio, an installed Swift toolchain/SDK, and pinned NuGet dependencies. Probes require .NET SDK 10. The VSIX targets .NET Framework 4.7.2. The build script locates installed Visual Studio TestWindow interfaces with vswhere.
 
 ```powershell
 .\scripts\build.ps1
+.\scripts\build-installers.ps1
 .\scripts\test-lsp.ps1
 .\scripts\test-debug.ps1
 .\scripts\test-tests.ps1
 .\scripts\test-templates.ps1 -InstanceId YOUR_INSTANCE_ID -Platform ARM64
 ```
 
-The VSIX is generated at `src\VisualSwift.VisualStudio\bin\Debug\net472\VisualSwift.VisualStudio.vsix`. The probe writes `artifacts\lsp-smoke.json`, including feature results and server exit status. An explicit toolchain can be tested with `-ToolchainBin`.
+The development VSIX is in `src\VisualSwift.VisualStudio\bin\Debug\net472`. Probe reports are in `artifacts`. Test adapter checks expect intentional failures and skips in the smoke fixture. Installer checks validate contents, manifests, architecture targets, and AnyCPU assemblies; they do not establish runtime compatibility on untested machines.
 
-## Run the prototype
+The newest Signature Help, Inlay Hints, type navigation and Test Explorer additions passed LSP/core/VSTest checks. Their final IDE interaction checks remain pending because computer-use could not capture the IDE window.
 
-Deploy to a separate Visual Studio development profile using the instance ID returned by `vswhere.exe`:
+To deploy to an isolated development profile:
 
 ```powershell
 .\scripts\deploy-prototype.ps1 -InstanceId YOUR_INSTANCE_ID -RootSuffix VisualSwiftClean
-$env:VISUALSWIFT_WORKSPACE = (Resolve-Path .\samples\LspSmoke).Path
-& 'PATH_TO_VISUAL_STUDIO\Common7\IDE\devenv.exe' $env:VISUALSWIFT_WORKSPACE /RootSuffix VisualSwiftClean
 ```
 
-Open `Sources\LspSmoke\main.swift` in Solution Explorer. Use Ctrl+Space for completion, hover for Quick Info, and F12 for Go To Definition. A temporary type error should produce an editor diagnostic.
-
-Use **Edit > Go To > Go To All** (`Ctrl+,` with the default keyboard mapping) to search Swift symbols through the standard Code Search interface. Open a Swift file first to activate SourceKit-LSP. Search includes indexed files that are not open in the editor; select a result and press Enter to navigate. **Find All References** (`Shift+F12`) uses the same server index. Results can be incomplete while indexing is in progress. See [search validation](docs/SEARCH.md).
-
-Use native **Rename...** (`Ctrl+R, Ctrl+R`) for Swift symbols. Method renames can include Swift argument labels. The extension watches package source-file changes and enables background indexing so newly added files enter cross-file Rename without a server restart. Allow indexing to finish; see [rename validation](docs/RENAME.md). The VSIX packages a modern Swift grammar with checks for Swift 6.4 constructs; see [syntax coverage and limitations](docs/SYNTAX_HIGHLIGHTING.md).
-
-Open **Extensions > Swift** for the unified window with Toolchain, Language Server, Package, Debug, and Output pages. Save a global toolchain or a workspace override, validate it, and restart the server from the window. See [window behavior and settings](docs/PLUGIN_WINDOW.md). Workspace and global settings take priority over `VISUALSWIFT_TOOLCHAIN`; PATH is the final fallback and must contain both `swift.exe` and `sourcekit-lsp.exe` in one directory. `VISUALSWIFT_WORKSPACE` optionally pins one package root and must contain `Package.swift`; Open Folder supplies a root when the override is absent. Environment variables must be set before launching Visual Studio. SDK variables such as `SDKROOT` are inherited in this prototype.
-
-Use **Format Document** (`Ctrl+K, Ctrl+D`) and **Format Selection** (`Ctrl+K, Ctrl+F`) for manual Swift formatting. They use the active toolchain and respect `.swift-format`; changes remain in the editor and support Undo. The Language Server page displays the formatter path. See [formatting behavior and validation](docs/FORMATTING.md). Format on Save is not implemented.
-
-Use **Signature Help** (`Ctrl+Shift+Space`), **Go To Implementation**, and **Go To Type Definition** through the standard editor commands. Configure **Inlay Hints** on the Language Server page in the Swift window. The installed SourceKit-LSP supplies inferred type hints; parameter-name hints depend on toolchain support. See [editor features](docs/EDITOR_FEATURES.md).
-
-Development logs are written to `%TEMP%\VisualSwift\client-<pid>.log`. They include protocol results and local paths. See [prototype validation](docs/PROTOTYPE_VALIDATION.md) for measured compatibility, technical decisions, and remaining checks.
-
-## Intended features
-
-- Swift editing with completion, navigation, diagnostics, and syntax highlighting.
-- An English-language Swift window with a sidebar and selected toolchain summary.
-- Toolchain discovery, selection, validation, and language server restart.
-- Swift Package Manager build, run, and test commands integrated with Visual Studio.
-- Swift console application and library project templates.
-- Progressive integration with Solution Explorer, project properties, Test Explorer, and debugging.
-
-Visual Studio 2026 is the primary target. Visual Studio 2022 and Windows x64 remain compatibility candidates awaiting IDE smoke tests.
-
-See [the development plan](docs/DEVELOPMENT_PLAN.md) for architecture, delivery stages, and acceptance criteria.
+Launch the corresponding Visual Studio instance with `/RootSuffix VisualSwiftClean` and open a SwiftPM package. Logs are written to `%TEMP%\VisualSwift\client-<pid>.log`; test XML attachments are retained under `<package>\.vs\VisualSwift\TestResults`.
 
 ## License
 
-Copyright 2026 jowtheshiba.
+Copyright 2026 jowtheshiba. Original code is licensed under the [Apache License, Version 2.0](LICENSE). See [NOTICE](NOTICE).
 
-Licensed under the [Apache License, Version 2.0](LICENSE). See [NOTICE](NOTICE).
+The Swift TextMate grammar derives from jtbandes/swift-tmlanguage revision `88500a474365c5bda55588258cb585a1f275529e`, with adaptations for typed throws and module selectors. Its MIT license is preserved in `src/VisualSwift.VisualStudio/Grammars/LICENSE.swift-tmlanguage.md`. The test adapter bundles Newtonsoft.Json 13.0.3 with its MIT license preserved in `src/VisualSwift.TestAdapter/LICENSE.Newtonsoft.Json.md`.

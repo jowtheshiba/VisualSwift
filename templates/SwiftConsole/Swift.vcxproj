@@ -31,7 +31,6 @@
   <ItemGroup>
     <None Include="Package.swift" />
     <None Include="Sources\App\main.swift" />
-    <None Include="README.md" />
     <None Include=".gitignore" />
     <None Include="VisualSwift\Invoke-Swift.ps1" />
   </ItemGroup>

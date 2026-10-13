@@ -56,6 +56,7 @@
     <EmbeddedResource Include="..\..\templates\Shared\Invoke-Swift.ps1" LogicalName="VisualSwift.Templates.Invoke-Swift.ps1" />
   </ItemGroup>
   <Target Name="BuildSwiftProjectTemplates" BeforeTargets="BeforeBuild">
+    <Delete Files="$(IntermediateOutputPath)TemplateStaging\SwiftConsole\README.md;$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\README.md" />
     <ItemGroup>
       <ConsoleTemplateFiles Include="$(MSBuildProjectDirectory)\..\..\templates\SwiftConsole\**\*" />
       <LibraryTemplateFiles Include="$(MSBuildProjectDirectory)\..\..\templates\SwiftLibrary\**\*" />
