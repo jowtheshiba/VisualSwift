@@ -21,6 +21,7 @@
       <ProjectItem ReplaceParameters="false" OpenInEditor="true" TargetFileName="Sources\Library\Greeter.swift">Sources\Library\Greeter.swift</ProjectItem>
       <ProjectItem ReplaceParameters="false" TargetFileName="Tests\LibraryTests\GreeterTests.swift">Tests\LibraryTests\GreeterTests.swift</ProjectItem>
       <ProjectItem ReplaceParameters="false" TargetFileName="VisualSwift\Invoke-Swift.ps1">VisualSwift\Invoke-Swift.ps1</ProjectItem>
+      <ProjectItem ReplaceParameters="false" TargetFileName="VisualSwift\WindowsSwiftEnvironment.ps1">VisualSwift\WindowsSwiftEnvironment.ps1</ProjectItem>
     </Project>
   </TemplateContent>
   <WizardExtension>

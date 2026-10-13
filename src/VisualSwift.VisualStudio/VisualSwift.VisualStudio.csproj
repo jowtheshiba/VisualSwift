@@ -48,12 +48,15 @@
     <Content Include="..\VisualSwift.TestAdapter\bin\$(Configuration)\net472\VisualSwift.TestAdapter.dll" Link="TestAdapter\VisualSwift.TestAdapter.dll"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="..\VisualSwift.TestAdapter\bin\$(Configuration)\net472\Newtonsoft.Json.dll" Link="TestAdapter\Newtonsoft.Json.dll"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="..\VisualSwift.TestAdapter\LICENSE.Newtonsoft.Json.md" Link="TestAdapter\LICENSE.Newtonsoft.Json.md"><IncludeInVSIX>true</IncludeInVSIX></Content>
+    <Content Include="..\..\templates\Shared\WindowsSwiftEnvironment.ps1" Link="Runtime\WindowsSwiftEnvironment.ps1"><IncludeInVSIX>true</IncludeInVSIX><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <Content Include="..\VisualSwift.TestAdapter\bin\$(Configuration)\net472\Runtime\WindowsSwiftEnvironment.ps1" Link="TestAdapter\Runtime\WindowsSwiftEnvironment.ps1"><IncludeInVSIX>true</IncludeInVSIX></Content>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="..\..\templates\SwiftConsole\Sources\App\main.swift" LogicalName="VisualSwift.Templates.Console.main.swift" />
     <EmbeddedResource Include="..\..\templates\SwiftLibrary\Sources\Library\Greeter.swift" LogicalName="VisualSwift.Templates.Library.Greeter.swift" />
     <EmbeddedResource Include="..\..\templates\SwiftLibrary\Tests\LibraryTests\GreeterTests.swift" LogicalName="VisualSwift.Templates.Library.GreeterTests.swift" />
     <EmbeddedResource Include="..\..\templates\Shared\Invoke-Swift.ps1" LogicalName="VisualSwift.Templates.Invoke-Swift.ps1" />
+    <EmbeddedResource Include="..\..\templates\Shared\WindowsSwiftEnvironment.ps1" LogicalName="VisualSwift.Templates.WindowsSwiftEnvironment.ps1" />
   </ItemGroup>
   <Target Name="BuildSwiftProjectTemplates" BeforeTargets="BeforeBuild">
     <Delete Files="$(IntermediateOutputPath)TemplateStaging\SwiftConsole\README.md;$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\README.md" />
@@ -64,6 +67,7 @@
     <Copy SourceFiles="@(ConsoleTemplateFiles)" DestinationFiles="@(ConsoleTemplateFiles->'$(IntermediateOutputPath)TemplateStaging\SwiftConsole\%(RecursiveDir)%(Filename)%(Extension)')" />
     <Copy SourceFiles="@(LibraryTemplateFiles)" DestinationFiles="@(LibraryTemplateFiles->'$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\%(RecursiveDir)%(Filename)%(Extension)')" />
     <Copy SourceFiles="..\..\templates\Shared\gitignore.txt;..\..\assets\icons\swift-console.ico;..\..\templates\Shared\Invoke-Swift.ps1" DestinationFiles="$(IntermediateOutputPath)TemplateStaging\SwiftConsole\gitignore.txt;$(IntermediateOutputPath)TemplateStaging\SwiftConsole\template.ico;$(IntermediateOutputPath)TemplateStaging\SwiftConsole\VisualSwift\Invoke-Swift.ps1" />
+    <Copy SourceFiles="..\..\templates\Shared\WindowsSwiftEnvironment.ps1;..\..\templates\Shared\WindowsSwiftEnvironment.ps1" DestinationFiles="$(IntermediateOutputPath)TemplateStaging\SwiftConsole\VisualSwift\WindowsSwiftEnvironment.ps1;$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\VisualSwift\WindowsSwiftEnvironment.ps1" />
     <Copy SourceFiles="..\..\templates\Shared\gitignore.txt;..\..\assets\icons\swift-library.ico;..\..\templates\Shared\Invoke-Swift.ps1" DestinationFiles="$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\gitignore.txt;$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\template.ico;$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\VisualSwift\Invoke-Swift.ps1" />
     <MakeDir Directories="$(IntermediateOutputPath)ProjectTemplates" />
     <ZipDirectory SourceDirectory="$(IntermediateOutputPath)TemplateStaging\SwiftConsole" DestinationFile="$(IntermediateOutputPath)ProjectTemplates\SwiftConsole.zip" Overwrite="true" />

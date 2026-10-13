@@ -20,6 +20,7 @@
       <ProjectItem ReplaceParameters="false" TargetFileName=".gitignore">gitignore.txt</ProjectItem>
       <ProjectItem ReplaceParameters="false" OpenInEditor="true" TargetFileName="Sources\App\main.swift">Sources\App\main.swift</ProjectItem>
       <ProjectItem ReplaceParameters="false" TargetFileName="VisualSwift\Invoke-Swift.ps1">VisualSwift\Invoke-Swift.ps1</ProjectItem>
+      <ProjectItem ReplaceParameters="false" TargetFileName="VisualSwift\WindowsSwiftEnvironment.ps1">VisualSwift\WindowsSwiftEnvironment.ps1</ProjectItem>
     </Project>
   </TemplateContent>
   <WizardExtension>

@@ -291,7 +291,7 @@ namespace VisualSwift
             var platform = configuration?.PlatformName;
             if ((version.Contains("aarch64-") && string.Equals(platform, "x64", StringComparison.OrdinalIgnoreCase))
                 || (version.Contains("x86_64-") && string.Equals(platform, "ARM64", StringComparison.OrdinalIgnoreCase)))
-                throw new InvalidOperationException("The solution platform " + platform + " does not match the Swift toolchain architecture. Select the matching ARM64 or x64 platform before building.");
+                validation.Text += Environment.NewLine + "Project platform: " + platform + ". Swift/MSVC target follows the selected " + (version.Contains("aarch64-") ? "ARM64" : "x64") + " toolchain.";
             Toolchain selected = null;
             try { selected = await Task.Run(() => Toolchain.Resolve(SwiftRuntime.Workspace), token); }
             catch (InvalidOperationException) { }

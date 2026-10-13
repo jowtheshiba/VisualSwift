@@ -12,6 +12,8 @@
     <Compile Include="..\VisualSwift.VisualStudio\SwiftSettings.cs" Link="SwiftSettings.cs" />
     <Compile Include="..\VisualSwift.VisualStudio\Toolchain.cs" Link="Toolchain.cs" />
     <Compile Include="..\VisualSwift.VisualStudio\SwiftProcess.cs" Link="SwiftProcess.cs" />
+    <Compile Include="..\VisualSwift.VisualStudio\SwiftWindowsEnvironment.cs" Link="SwiftWindowsEnvironment.cs" />
+    <Content Include="..\..\templates\Shared\WindowsSwiftEnvironment.ps1" Link="Runtime\WindowsSwiftEnvironment.ps1"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
 </Project>

@@ -5,5 +5,7 @@
     <Compile Include="..\..\src\VisualSwift.VisualStudio\SwiftSettings.cs" Link="SwiftSettings.cs" />
     <Compile Include="..\..\src\VisualSwift.VisualStudio\Toolchain.cs" Link="Toolchain.cs" />
     <Compile Include="..\..\src\VisualSwift.VisualStudio\SwiftProcess.cs" Link="SwiftProcess.cs" />
+    <Compile Include="..\..\src\VisualSwift.VisualStudio\SwiftWindowsEnvironment.cs" Link="SwiftWindowsEnvironment.cs" />
+    <Content Include="..\..\templates\Shared\WindowsSwiftEnvironment.ps1" Link="Runtime\WindowsSwiftEnvironment.ps1"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
   </ItemGroup>
 </Project>

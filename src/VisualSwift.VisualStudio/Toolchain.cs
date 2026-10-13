@@ -69,7 +69,8 @@ namespace VisualSwift
                 RedirectStandardError = true,
                 WorkingDirectory = workspace ?? BinDirectory
             };
-            info.EnvironmentVariables["PATH"] = BinDirectory + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH");
+            SwiftWindowsEnvironment.Apply(info, BinDirectory);
+            info.EnvironmentVariables["PATH"] = BinDirectory + Path.PathSeparator + info.EnvironmentVariables["PATH"];
             return info;
         }
 

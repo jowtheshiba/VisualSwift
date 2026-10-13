@@ -54,7 +54,8 @@ namespace VisualSwift
                 var toolchain = await Task.Run(() => Toolchain.Resolve(workspace), token);
                 middleLayer.Workspace = workspace;
                 SwiftRuntime.SetServer("Starting", toolchain.BinDirectory, workspace);
-                var process = new Process { StartInfo = toolchain.CreateServerStartInfo(workspace), EnableRaisingEvents = true };
+                var startInfo = await Task.Run(() => toolchain.CreateServerStartInfo(workspace), token);
+                var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
                 var job = new SwiftProcessJob();
                 server = process;
                 serverJob = job;

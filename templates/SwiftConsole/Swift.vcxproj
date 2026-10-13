@@ -33,6 +33,7 @@
     <None Include="Sources\App\main.swift" />
     <None Include=".gitignore" />
     <None Include="VisualSwift\Invoke-Swift.ps1" />
+    <None Include="VisualSwift\WindowsSwiftEnvironment.ps1" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

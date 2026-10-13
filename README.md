@@ -1,6 +1,6 @@
 # VisualSwift
 
-Version **1.0**.
+Version **1.0.1** (1.0 maintenance release).
 
 Swift language support for Microsoft Visual Studio on Windows, powered by SourceKit-LSP and Swift Package Manager.
 
@@ -14,17 +14,17 @@ Build Release installers with:
 
 Packages are written to `artifacts/installers`:
 
-- `VisualSwift-1.0.0-universal.vsix` for ARM64 and x86_64.
-- `VisualSwift-1.0.0-arm64.vsix` for ARM64.
-- `VisualSwift-1.0.0-x86_64.vsix` for x86_64.
+- `VisualSwift-1.0.1-universal.vsix` for ARM64 and x86_64.
+- `VisualSwift-1.0.1-arm64.vsix` for ARM64.
+- `VisualSwift-1.0.1-x86_64.vsix` for x86_64.
 
 Choose one package, close Visual Studio, double-click the VSIX, and select the target IDE instance. All variants share one extension identity and support upgrades from earlier versions. SHA-256 checksums and package validation results are included alongside the installers. Packages are unsigned; VSIX Installer may show an unverified publisher.
 
 The manifest targets Visual Studio Community, Professional, and Enterprise 17.14 through 18.x. The measured runtime environment is Visual Studio 2026 on Windows ARM64 with Swift 6.4. Visual Studio 2022 and x86_64 runtime compatibility have not been verified.
 
-Install the matching Windows Swift toolchain and SDK separately and configure their environment before launching Visual Studio. Swift executables are not bundled. Project templates additionally require Visual Studio C++ project support; existing packages can be edited using Open Folder.
+Install the matching Windows Swift toolchain, SDK, and Visual Studio C++ build tools separately and configure their environment before launching Visual Studio. Swift executables are not bundled. Project templates additionally require Visual Studio C++ project support; existing packages can be edited using Open Folder.
 
-Uninstall through Visual Studio's extension management window and restart the IDE.
+To uninstall, open **Extensions > Manage Extensions > Installed**, select **VisualSwift**, and choose **Uninstall**. Close all Visual Studio windows so VSIX Installer can apply the removal, then restart the IDE. To update, close Visual Studio and install the newer VSIX; uninstalling the older version first is normally unnecessary because the extension identity is unchanged.
 
 ## Features
 
@@ -46,7 +46,9 @@ Toolchain selection uses workspace settings, then global settings, then `VISUALS
 
 Search for **Swift** in **File > New > Project** to create a console application or library. Templates use the Visual Studio Makefile project system; `Package.swift` remains authoritative. Debug/Release selects the SwiftPM build configuration. The platform label does not switch the Swift compiler architecture.
 
-For debugging, select an executable on the Debug page, save its options, and enable F5 for the package or use Start Debugging. Debug builds use LLVM/DWARF for LLDB on Windows. Tests use the package's selected toolchain and inherited SDK environment.
+New console projects enable Swift debugging through F5 and the standard Start button automatically. For an existing project, select an executable on the Debug page, save its options, and enable F5 for the package or use Start Debugging. Debug builds use LLVM/DWARF for LLDB on Windows. Tests use the package's selected toolchain and inherited SDK environment.
+
+VisualSwift initializes MSVC libraries and Windows SDK build variables for the selected Swift compiler's actual architecture. An ARM64 Swift compiler must use ARM64 MSVC runtime libraries even when the Makefile project platform is labeled x64. Existing projects created before 1.0.1 need the updated `templates/Shared/Invoke-Swift.ps1` and `templates/Shared/WindowsSwiftEnvironment.ps1` copied into their `VisualSwift` directory.
 
 ## Build and verification
 

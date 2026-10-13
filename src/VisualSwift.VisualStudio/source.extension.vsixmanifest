@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Id="VisualSwift.Prototype.53cde9a7-22a8-4a50-a752-8d9f5ac6477e" Version="1.0.0" Language="en-US" Publisher="jowtheshiba" />
+    <Identity Id="VisualSwift.Prototype.53cde9a7-22a8-4a50-a752-8d9f5ac6477e" Version="1.0.1" Language="en-US" Publisher="jowtheshiba" />
     <DisplayName>VisualSwift</DisplayName>
     <Description xml:space="preserve">Swift language support powered by SourceKit-LSP, with SwiftPM project templates, debugging, and Test Explorer integration.</Description>
     <License>LICENSE</License>

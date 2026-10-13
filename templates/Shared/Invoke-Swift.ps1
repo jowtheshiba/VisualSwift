@@ -34,6 +34,10 @@ try {
     }
     $env:PATH = $swiftBin + [System.IO.Path]::PathSeparator + $env:PATH
     $swift = Join-Path $swiftBin 'swift.exe'
+    . (Join-Path $PSScriptRoot 'WindowsSwiftEnvironment.ps1')
+    $environment = Get-WindowsSwiftEnvironment $swiftBin
+    foreach ($name in $environment.Keys) { [Environment]::SetEnvironmentVariable($name, $environment[$name], 'Process') }
+    Write-Output ('VisualSwift: Swift/MSVC target ' + $environment['VSCMD_ARG_TGT_ARCH'])
     $buildConfiguration = $Configuration.ToLowerInvariant()
     if ($Command -in @('Clean', 'Rebuild')) {
         & $swift package --package-path $package clean

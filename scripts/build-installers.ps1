@@ -38,6 +38,8 @@ function Test-Installer([string]$Path, [string[]]$Architectures) {
         $required = @('extension.vsixmanifest', 'VisualSwift.VisualStudio.dll', 'TestAdapter/VisualSwift.TestAdapter.dll',
             'TestAdapter/Newtonsoft.Json.dll', 'TestAdapter/LICENSE.Newtonsoft.Json.md', 'LICENSE', 'NOTICE',
             'ProjectTemplates/SwiftConsole/SwiftConsole.vstemplate', 'ProjectTemplates/SwiftLibrary/SwiftLibrary.vstemplate',
+            'Runtime/WindowsSwiftEnvironment.ps1', 'TestAdapter/Runtime/WindowsSwiftEnvironment.ps1',
+            'ProjectTemplates/SwiftConsole/VisualSwift/WindowsSwiftEnvironment.ps1', 'ProjectTemplates/SwiftLibrary/VisualSwift/WindowsSwiftEnvironment.ps1',
             'ProjectTemplates/templateManifest0.noloc.vstman', 'Grammars/swift.tmLanguage.json')
         foreach ($name in $required) {
             if (!$archive.GetEntry($name)) { throw "Missing installer content: $name in $Path" }

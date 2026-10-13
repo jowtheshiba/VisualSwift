@@ -16,7 +16,8 @@ namespace VisualSwift
             var library = string.Equals(Path.GetFileName(templatePath), "SwiftLibrary.vstemplate", StringComparison.OrdinalIgnoreCase);
             var files = new Dictionary<string, string>
             {
-                ["VisualSwift\\Invoke-Swift.ps1"] = "VisualSwift.Templates.Invoke-Swift.ps1"
+                ["VisualSwift\\Invoke-Swift.ps1"] = "VisualSwift.Templates.Invoke-Swift.ps1",
+                ["VisualSwift\\WindowsSwiftEnvironment.ps1"] = "VisualSwift.Templates.WindowsSwiftEnvironment.ps1"
             };
             if (library)
             {
@@ -43,6 +44,8 @@ namespace VisualSwift
                         source.CopyTo(destination);
                 }
             }
+            if (!library && !File.Exists(SwiftDebugOptions.FilePath(root)))
+                new SwiftDebugOptions { Product = replacementsDictionary["$safeprojectname$"], UseF5 = true }.Save(root);
         }
 
         public bool ShouldAddProjectItem(string filePath) => true;

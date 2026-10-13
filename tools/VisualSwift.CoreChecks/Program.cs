@@ -10,6 +10,7 @@ var globalPath = Path.Combine(root, "global", "settings.json");
 var settings = new SwiftSettings(globalPath);
 var swift = Toolchain.FromPath(args[0]);
 var originalEnvironment = Environment.GetEnvironmentVariable("VISUALSWIFT_TOOLCHAIN");
+var originalLibraries = Environment.GetEnvironmentVariable("LIB");
 try
 {
     Environment.SetEnvironmentVariable("VISUALSWIFT_TOOLCHAIN", swift.BinDirectory);
@@ -29,6 +30,11 @@ try
     try { Toolchain.Resolve(workspace, settings); throw new Exception("Invalid override silently fell back."); }
     catch (InvalidOperationException) { }
     settings.ClearWorkspace(workspace);
+    Environment.SetEnvironmentVariable("LIB", @"C:\invalid\MSVC\lib\x64");
+    var startInfo = swift.CreateSwiftStartInfo("--version", root);
+    Assert(!startInfo.EnvironmentVariables["LIB"].Contains(@"C:\invalid"), "Swift inherited mismatched MSVC libraries.");
+    Assert(startInfo.EnvironmentVariables["VSCMD_ARG_TGT_ARCH"] is "arm64" or "x64", "Swift target architecture was not initialized.");
+    Assert(Environment.GetEnvironmentVariable("LIB") == @"C:\invalid\MSVC\lib\x64", "Compiler initialization modified the parent process environment.");
     var version = await swift.ValidateAsync(CancellationToken.None);
     Assert(settings.ReadInlayHints(workspace).Enabled && settings.ReadInlayHints(workspace).Types && settings.ReadInlayHints(workspace).Parameters, "Inlay hints defaults failed.");
     settings.SaveInlayHints(new InlayHintSettings(true, true, false), null, false);
@@ -55,6 +61,6 @@ try
     catch (OperationCanceledException) { Assert(elapsed.Elapsed < TimeSpan.FromSeconds(5), "Cancellation did not stop promptly."); }
     Console.WriteLine("Core checks passed: toolchain priority/persistence, inlay hints scope/filtering, invalid overrides, compiler validation, process output/exit and cancellation.");
 }
-finally { Environment.SetEnvironmentVariable("VISUALSWIFT_TOOLCHAIN", originalEnvironment); }
+finally { Environment.SetEnvironmentVariable("VISUALSWIFT_TOOLCHAIN", originalEnvironment); Environment.SetEnvironmentVariable("LIB", originalLibraries); }
 
 static void Assert(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
