@@ -39,8 +39,13 @@ The manifest permits Visual Studio 17.14 through 18.x on amd64 and arm64. This i
 | Protocol framing | Shared adapter tested with byte-by-byte frames, multiple frames per write, UTF-8 lengths, and a Unicode path containing spaces |
 | Server lifecycle | Probe shutdown/exit with stdin closed completed with exit code 0; indexed search sessions otherwise waited for transport EOF; IDE close/reopen activated a new server |
 | Syntax presentation | VSIX now bundles a pinned MIT Swift grammar with typed-throws and module-selector adaptations; nine tokenizer cases and 45 scope assertions pass; see SYNTAX_HIGHLIGHTING.md |
+| Signature Help and type navigation | SourceKit-LSP probe verifies two parameters, active argument, type declaration, and protocol implementation; the installed VS LSP client includes native handlers; see EDITOR_FEATURES.md |
+| Inlay Hints | SourceKit-LSP returns inferred types; persisted global/workspace settings and kind filtering pass core checks. Swift 6.4 does not supply parameter hints; see EDITOR_FEATURES.md |
+| SwiftPM test adapter | Installed VSTest 18.10 discovers seven XCTest/Swift Testing cases; three pass, two intentionally fail, two skip. Run Selected, parameterized tests, assertion details, paths with spaces, and packages without tests pass; see TEST_EXPLORER.md |
 
 Temporary editor diagnostic changes were undone without saving. The fixture remains valid Swift source. Machine-local results are stored in artifacts/lsp-smoke.json and development logs in %TEMP%/VisualSwift. Those generated files are excluded from Git.
+
+The 2026-10-12 editor/test additions build and deploy successfully to the VisualSwiftTemplatesWizard profile. Their final IDE interaction checks are pending: computer-use repeatedly returned `foreground window did not report a process id` before any editor or Test Explorer interaction. The LSP and VSTest results above are automated checks, not screenshots or verification of the new UI in the IDE.
 
 ## Technical decisions
 

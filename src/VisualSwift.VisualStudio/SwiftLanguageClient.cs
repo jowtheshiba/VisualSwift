@@ -191,6 +191,8 @@ namespace VisualSwift
                 initialize["workspaceFolders"] = new JArray(new JObject { ["uri"] = uri, ["name"] = Path.GetFileName(Workspace) });
             }
             PrototypeLog.Write("request " + methodName);
+            var hints = methodName == "textDocument/inlayHint" ? SwiftSettings.Default.ReadInlayHints(Workspace) : null;
+            if (hints != null && !hints.Enabled) return new JArray();
             if ((methodName == "textDocument/prepareRename" || methodName == "textDocument/rename") && FlushFileChanges != null)
                 await FlushFileChanges();
             JToken result;
@@ -200,6 +202,7 @@ namespace VisualSwift
                 PrototypeLog.Write("Swift formatting failed: " + error.Message);
                 throw;
             }
+            if (hints != null && result is JArray inlayHints) result = hints.Filter(inlayHints);
             PrototypeLog.Write("response " + methodName + " " + result?.ToString(Newtonsoft.Json.Formatting.None));
             return result;
         }

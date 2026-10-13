@@ -8,6 +8,8 @@ Search follow-up: native Code Search displays Swift workspace symbols, including
 
 ## Product requirements
 
+Editor and testing follow-up: Signature Help and type/implementation navigation use native LSP commands, with semantic acceptance checks. Inlay Hints have independent persisted global/workspace settings in the existing Language Server page. The VSIX now includes a VSTest adapter and active-package container discovery for XCTest and Swift Testing. See [editor features](EDITOR_FEATURES.md) and [Test Explorer](TEST_EXPLORER.md) for measured results and remaining scope.
+
 1. Extend Microsoft Visual Studio on Windows with Swift language support.
 2. Use SourceKit-LSP from the selected Swift toolchain as the language engine.
 3. Provide one Swift window with sidebar navigation and a visible selected toolchain, including when unavailable.

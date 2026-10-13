@@ -30,6 +30,20 @@ try
     catch (InvalidOperationException) { }
     settings.ClearWorkspace(workspace);
     var version = await swift.ValidateAsync(CancellationToken.None);
+    Assert(settings.ReadInlayHints(workspace).Enabled && settings.ReadInlayHints(workspace).Types && settings.ReadInlayHints(workspace).Parameters, "Inlay hints defaults failed.");
+    settings.SaveInlayHints(new InlayHintSettings(true, true, false), null, false);
+    settings.SaveInlayHints(new InlayHintSettings(false, false, true), workspace, true);
+    Assert(!new SwiftSettings(globalPath).ReadInlayHints(workspace).Enabled, "Workspace inlay hints override did not persist.");
+    Assert(Toolchain.Resolve(workspace, settings).BinDirectory == swift.BinDirectory, "Saving hints changed the selected toolchain.");
+    settings.Save(fakeBin, workspace, true);
+    Assert(!settings.ReadInlayHints(workspace).Enabled, "Saving toolchain removed inlay hints.");
+    settings.ClearWorkspace(workspace);
+    Assert(!settings.ReadInlayHints(workspace).Enabled, "Clearing toolchain removed inlay hints.");
+    settings.ClearWorkspaceInlayHints(workspace);
+    var hints = new SwiftSettings(globalPath).ReadInlayHints(workspace);
+    Assert(hints.Enabled && hints.Types && !hints.Parameters && hints.Scope == "Global", "Clearing workspace hints did not restore global settings.");
+    var hintItems = Newtonsoft.Json.Linq.JArray.Parse("[{\"kind\":1},{\"kind\":2},{}]");
+    Assert(hints.Filter(hintItems).Count == 2 && new InlayHintSettings(false, true, true).Filter(hintItems).Count == 0, "Inlay hint filtering failed.");
     Assert(version.Contains("Swift version"), "Compiler validation returned no version.");
     var fake = Toolchain.FromPath(fakeBin);
     Assert((await SwiftProcess.RunAsync(fake, "/c echo core-check", root, CancellationToken.None)).Contains("core-check"), "Process output was lost.");
@@ -39,7 +53,7 @@ try
     var elapsed = Stopwatch.StartNew();
     try { await SwiftProcess.RunAsync(fake, "/c ping -n 30 127.0.0.1", root, cancellation.Token); throw new Exception("Cancellation was ignored."); }
     catch (OperationCanceledException) { Assert(elapsed.Elapsed < TimeSpan.FromSeconds(5), "Cancellation did not stop promptly."); }
-    Console.WriteLine("Core checks passed: selection priority, persistence, invalid override, compiler validation, process output/exit and cancellation.");
+    Console.WriteLine("Core checks passed: toolchain priority/persistence, inlay hints scope/filtering, invalid overrides, compiler validation, process output/exit and cancellation.");
 }
 finally { Environment.SetEnvironmentVariable("VISUALSWIFT_TOOLCHAIN", originalEnvironment); }
 

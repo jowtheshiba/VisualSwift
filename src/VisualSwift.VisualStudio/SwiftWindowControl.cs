@@ -22,6 +22,10 @@ namespace VisualSwift
         private readonly TextBlock server = Label();
         private readonly TextBlock active = Label();
         private readonly TextBlock formatter = Label();
+        private readonly CheckBox inlayEnabled = new CheckBox { Content = "Show inlay hints", Margin = new Thickness(0, 8, 0, 4) };
+        private readonly CheckBox inlayTypes = new CheckBox { Content = "Inferred types", Margin = new Thickness(0, 4, 0, 4) };
+        private readonly CheckBox inlayParameters = new CheckBox { Content = "Parameter names (when provided by the toolchain)", Margin = new Thickness(0, 4, 0, 4) };
+        private readonly ComboBox inlayScope = new ComboBox { MinWidth = 120 };
         private readonly TextBlock package = Label();
         private readonly TextBlock metadata = Label();
         private readonly TextBlock message = Label();
@@ -35,6 +39,7 @@ namespace VisualSwift
         private readonly TextBox output = new TextBox { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
         private readonly Button cancel = new Button { Content = "Cancel", IsEnabled = false, Margin = new Thickness(0, 8, 0, 0) };
         private CancellationTokenSource operation;
+        private string hintsWorkspace;
 
         public SwiftWindowControl()
         {
@@ -80,6 +85,19 @@ namespace VisualSwift
             languageServer.Children.Add(server);
             languageServer.Children.Add(active);
             languageServer.Children.Add(formatter);
+            languageServer.Children.Add(new TextBlock { Text = "Signature Help: Ctrl+Shift+Space\nNavigation: standard Go To Implementation / Go To Type Definition commands", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 4) });
+            Heading(languageServer, "Inlay Hints");
+            foreach (var toggle in new[] { inlayEnabled, inlayTypes, inlayParameters })
+            {
+                toggle.SetResourceReference(ForegroundProperty, EnvironmentColors.ToolWindowTextBrushKey);
+                languageServer.Children.Add(toggle);
+            }
+            inlayScope.Items.Add("Global"); inlayScope.Items.Add("Workspace"); inlayScope.SelectedIndex = 0;
+            var hintsActions = Row(languageServer);
+            hintsActions.Children.Add(inlayScope);
+            Button(hintsActions, "Apply Hints", ApplyHintsAsync);
+            Button(hintsActions, "Use Global Hints", UseGlobalHintsAsync);
+            languageServer.Children.Add(new TextBlock { Text = "Applying hints restarts SourceKit-LSP to refresh open editors. Available hint kinds depend on the selected toolchain.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 6) });
             languageServer.Children.Add(new TextBlock { Text = "Format Document: Ctrl+K, Ctrl+D\nFormat Selection: Ctrl+K, Ctrl+F\nThe nearest .swift-format file takes priority over editor indentation settings.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 8) });
             var language = Row(languageServer);
             Button(language, "Restart", _ => SwiftPackage.RestartAsync());
@@ -214,6 +232,7 @@ namespace VisualSwift
             SwiftRuntime.SetWorkspace(SwiftWorkspace.Current() ?? SwiftRuntime.Workspace);
             var workspace = SwiftRuntime.Workspace;
             var selected = await Task.Run(() => SwiftSettings.Default.Read(workspace), token);
+            LoadHints();
             scope.SelectedIndex = selected.Scope == "Workspace" ? 1 : 0;
             var resolved = await Task.Run(() => Toolchain.Resolve(workspace), token);
             toolchainPath.Text = resolved.BinDirectory;
@@ -227,6 +246,30 @@ namespace VisualSwift
             var dialog = new OpenFileDialog { Title = "Select Swift Compiler", Filter = "Swift compiler (swift.exe)|swift.exe", CheckFileExists = true };
             if (dialog.ShowDialog() == true) toolchainPath.Text = Path.GetDirectoryName(dialog.FileName);
             return Task.CompletedTask;
+        }
+
+        private void LoadHints()
+        {
+            hintsWorkspace = SwiftRuntime.Workspace;
+            var hints = SwiftSettings.Default.ReadInlayHints(SwiftRuntime.Workspace);
+            inlayEnabled.IsChecked = hints.Enabled;
+            inlayTypes.IsChecked = hints.Types;
+            inlayParameters.IsChecked = hints.Parameters;
+            inlayScope.SelectedIndex = hints.Scope == "Workspace" ? 1 : 0;
+        }
+
+        private async Task ApplyHintsAsync(CancellationToken token)
+        {
+            var hints = new InlayHintSettings(inlayEnabled.IsChecked == true, inlayTypes.IsChecked == true, inlayParameters.IsChecked == true);
+            SwiftSettings.Default.SaveInlayHints(hints, SwiftRuntime.Workspace, inlayScope.SelectedIndex == 1);
+            if (SwiftRuntime.Restart != null) await SwiftPackage.RestartAsync();
+        }
+
+        private async Task UseGlobalHintsAsync(CancellationToken token)
+        {
+            SwiftSettings.Default.ClearWorkspaceInlayHints(SwiftRuntime.Workspace);
+            LoadHints();
+            if (SwiftRuntime.Restart != null) await SwiftPackage.RestartAsync();
         }
 
         private async Task ValidateAsync(CancellationToken token)
@@ -342,6 +385,7 @@ namespace VisualSwift
             try
             {
                 var workspace = SwiftRuntime.Workspace;
+                if (!string.Equals(hintsWorkspace, workspace, StringComparison.OrdinalIgnoreCase)) LoadHints();
                 var selected = SwiftSettings.Default.Read(workspace);
                 var bin = Toolchain.Resolve(workspace).BinDirectory;
                 selection.Text = "Selected: " + bin + Environment.NewLine + "Source: " + selected.Scope;

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>VisualSwift.TestAdapter</AssemblyName>
+    <LicenseExpression>Apache-2.0</LicenseExpression>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.TestPlatform.ObjectModel" Version="17.14.1" ExcludeAssets="runtime" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.3" PrivateAssets="all" />
+    <Compile Include="..\VisualSwift.VisualStudio\SwiftSettings.cs" Link="SwiftSettings.cs" />
+    <Compile Include="..\VisualSwift.VisualStudio\Toolchain.cs" Link="Toolchain.cs" />
+    <Compile Include="..\VisualSwift.VisualStudio\SwiftProcess.cs" Link="SwiftProcess.cs" />
+    <Reference Include="System.Xml.Linq" />
+  </ItemGroup>
+</Project>

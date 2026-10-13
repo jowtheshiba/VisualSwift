@@ -35,8 +35,10 @@ On 2026-10-12, the single menu entry, all four sidebar pages, compiler/SDK summa
 - SwiftPM Build, Rebuild, Clean, Run, Test, Resolve Dependencies, and Cancel inside this window.
 - Installed toolchain discovery and SDK environment selection.
 - Project properties, package/target hierarchy, and multiple packages.
-- Test Explorer and broader debugger support beyond local SwiftPM executables.
+- Broader debugger support beyond local SwiftPM executables, including test debugging.
 
 Code search continues through native Visual Studio Code Search and Find All References. See [search validation](SEARCH.md).
 
 The Debug page was added and tested on 2026-10-12. The debugger builds using the selected toolchain and displays standard Visual Studio debugger panes. Debug builds have a five-minute timeout; other Swift queries retain their 30-second timeout. See [debugging setup and validation](DEBUGGING.md).
+
+The Language Server page also contains Inlay Hints toggles and a separate Global/Workspace selector. Applying hints preserves toolchain settings and restarts the language server to refresh editors. See [editor features](EDITOR_FEATURES.md). SwiftPM tests use the native [Test Explorer](TEST_EXPLORER.md).

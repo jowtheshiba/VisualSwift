@@ -22,6 +22,8 @@ namespace VisualSwift
         private IVsOutputWindowPane output;
         private IVsRegisterPriorityCommandTarget debugCommands;
         private uint debugCommandCookie;
+        private EnvDTE.SolutionEvents solutionEvents;
+        private EnvDTE.WindowEvents windowEvents;
         internal CancellationToken DisposalTokenForDebug => DisposalToken;
         internal static SwiftPackage Instance { get; private set; }
 
@@ -29,6 +31,16 @@ namespace VisualSwift
         {
             await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
             Instance = this;
+            var dte = await GetServiceAsync(typeof(EnvDTE.DTE)) as EnvDTE.DTE;
+            if (dte != null)
+            {
+                solutionEvents = dte.Events.SolutionEvents;
+                windowEvents = dte.Events.WindowEvents;
+                solutionEvents.Opened += UpdateWorkspace;
+                solutionEvents.AfterClosing += UpdateWorkspace;
+                windowEvents.WindowActivated += WindowActivated;
+            }
+            UpdateWorkspace();
             var window = await GetServiceAsync(typeof(SVsOutputWindow)) as IVsOutputWindow ?? throw new InvalidOperationException("Visual Studio Output is unavailable.");
             var id = OutputId;
             ErrorHandler.ThrowOnFailure(window.CreatePane(ref id, "Swift", 1, 1));
@@ -46,6 +58,19 @@ namespace VisualSwift
             var command = new OleMenuCommand((_, __) => ExecuteCommand(action), new CommandID(Commands, id));
             menu.AddCommand(command);
             return command;
+        }
+
+        private void WindowActivated(EnvDTE.Window current, EnvDTE.Window previous)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            UpdateWorkspace();
+        }
+
+        private void UpdateWorkspace()
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            try { SwiftRuntime.SetWorkspace(SwiftWorkspace.Current()); }
+            catch (Exception error) { PrototypeLog.Write("Swift workspace update: " + error.Message); }
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSTHRD100", Justification = "The menu callback returns void; asynchronous operation errors are handled here.")]
@@ -85,6 +110,8 @@ namespace VisualSwift
             ThreadHelper.ThrowIfNotOnUIThread();
             if (disposing)
             {
+                if (solutionEvents != null) { solutionEvents.Opened -= UpdateWorkspace; solutionEvents.AfterClosing -= UpdateWorkspace; }
+                if (windowEvents != null) windowEvents.WindowActivated -= WindowActivated;
                 PrototypeLog.Written -= WriteOutput;
                 if (debugCommandCookie != 0) debugCommands?.UnregisterPriorityCommandTarget(debugCommandCookie);
                 Instance = null;

@@ -19,6 +19,7 @@
     <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[17.14,19.0)" DisplayName="Visual Studio core editor" />
   </Prerequisites>
   <Assets>
+    <Asset Type="UnitTestExtension" d:Source="File" Path="TestAdapter\VisualSwift.TestAdapter.dll" />
     <Asset Type="Microsoft.VisualStudio.MefComponent" d:Source="Project" d:ProjectName="VisualSwift.VisualStudio" Path="|VisualSwift.VisualStudio|" />
     <Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="File" Path="VisualSwift.pkgdef" />
     <Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="File" Path="SwiftDebugger.pkgdef" />
