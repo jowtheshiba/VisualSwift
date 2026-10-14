@@ -8,6 +8,7 @@
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <Compile Include="..\..\src\VisualSwift.VisualStudio\LspInputStream.cs" Link="LspInputStream.cs" />
+    <Compile Include="..\..\src\VisualSwift.VisualStudio\SwiftCodeActions.cs" Link="SwiftCodeActions.cs" />
     <Compile Include="..\..\src\VisualSwift.VisualStudio\PrototypeLog.cs" Link="PrototypeLog.cs" />
     <Compile Include="..\..\src\VisualSwift.VisualStudio\SwiftFileWatcher.cs" Link="SwiftFileWatcher.cs" />
   </ItemGroup>

@@ -39,13 +39,34 @@ try {
     foreach ($name in $environment.Keys) { [Environment]::SetEnvironmentVariable($name, $environment[$name], 'Process') }
     Write-Output ('VisualSwift: Swift/MSVC target ' + $environment['VSCMD_ARG_TGT_ARCH'])
     $buildConfiguration = $Configuration.ToLowerInvariant()
+    $profile = $null
+    if (Test-Path -LiteralPath $workspaceSettings) { $profile = (Get-Content -Raw -LiteralPath $workspaceSettings | ConvertFrom-Json).projectProfiles.$Configuration }
+    $buildFlags = [Collections.Generic.List[string]]::new()
+    if ($profile) {
+        if ($profile.Optimization -and $profile.Optimization -ne 'Default') { $buildFlags.Add('-Xswiftc'); $buildFlags.Add($profile.Optimization) }
+        foreach ($condition in $profile.Conditions) { $buildFlags.Add('-Xswiftc'); $buildFlags.Add('-D' + $condition) }
+        foreach ($mapping in @(@('SwiftFlags', '-Xswiftc'), @('CFlags', '-Xcc'), @('CxxFlags', '-Xcxx'), @('LinkerFlags', '-Xlinker'))) {
+            foreach ($flag in $profile.($mapping[0])) { $buildFlags.Add($mapping[1]); $buildFlags.Add($flag) }
+        }
+    }
     if ($Command -in @('Clean', 'Rebuild')) {
         & $swift package --package-path $package clean
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         if ($Command -eq 'Clean') { exit 0 }
     }
     $operation = switch ($Command) { 'Run' { 'run' } 'Test' { 'test' } default { 'build' } }
-    & $swift $operation --package-path $package --configuration $buildConfiguration
+    $swiftArguments = @($operation, '--package-path', $package, '--configuration', $buildConfiguration) + $buildFlags.ToArray()
+    if ($Command -eq 'Run' -and $profile) {
+        foreach ($property in $profile.Environment.PSObject.Properties) { [Environment]::SetEnvironmentVariable($property.Name, [string]$property.Value, 'Process') }
+        if ($profile.WorkingDirectory) {
+            $workingDirectory = if ([IO.Path]::IsPathRooted($profile.WorkingDirectory)) { $profile.WorkingDirectory } else { Join-Path $package $profile.WorkingDirectory }
+            Set-Location -LiteralPath ([IO.Path]::GetFullPath($workingDirectory))
+        }
+        if ($profile.BuildBeforeLaunch -eq $false) { $swiftArguments += '--skip-build' }
+        if ($profile.Product) { $swiftArguments += $profile.Product }
+        $swiftArguments += @($profile.Arguments)
+    }
+    & $swift @swiftArguments
     exit $LASTEXITCODE
 }
 catch {

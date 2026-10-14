@@ -82,7 +82,7 @@ namespace VisualSwift
             {
                 foreach (var property in capabilities.Descendants().OfType<JProperty>().Where(property => property.Name == "dynamicRegistration").ToArray())
                     property.Value = false;
-                if (capabilities["textDocument"] is JObject textDocument) textDocument.Remove("diagnostic");
+                if (capabilities["textDocument"] is JObject textDocument) { textDocument.Remove("diagnostic"); SwiftCodeActions.AdaptCapabilities(textDocument); }
             }
             if (workspace != null)
             {

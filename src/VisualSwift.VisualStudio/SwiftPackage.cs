@@ -24,6 +24,8 @@ namespace VisualSwift
         private uint debugCommandCookie;
         private EnvDTE.SolutionEvents solutionEvents;
         private EnvDTE.WindowEvents windowEvents;
+        private SwiftDependencyExplorer dependencyExplorer;
+        private SwiftBuildConfigurationEvents buildConfigurations;
         internal CancellationToken DisposalTokenForDebug => DisposalToken;
         internal static SwiftPackage Instance { get; private set; }
 
@@ -49,6 +51,8 @@ namespace VisualSwift
             WriteOutput("VisualSwift loaded. File log: " + PrototypeLog.FilePath);
             var menu = await GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
             Add(menu, 0x0101, async () => await ShowSwiftWindowAsync());
+            if (dte != null && menu != null) dependencyExplorer = new SwiftDependencyExplorer(dte, menu, DisposalToken);
+            if (dte != null) buildConfigurations = new SwiftBuildConfigurationEvents(dte, DisposalToken);
             debugCommands = await GetServiceAsync(typeof(SVsRegisterPriorityCommandTarget)) as IVsRegisterPriorityCommandTarget;
             if (debugCommands != null) ErrorHandler.ThrowOnFailure(debugCommands.RegisterPriorityCommandTarget(0, new SwiftDebugCommands(this), out debugCommandCookie));
             PrototypeLog.Write("Swift package initialized; debug command target=" + debugCommandCookie);
@@ -124,6 +128,8 @@ namespace VisualSwift
                 if (solutionEvents != null) { solutionEvents.Opened -= UpdateWorkspace; solutionEvents.AfterClosing -= UpdateWorkspace; }
                 if (windowEvents != null) windowEvents.WindowActivated -= WindowActivated;
                 PrototypeLog.Written -= WriteOutput;
+                dependencyExplorer?.Dispose();
+                buildConfigurations?.Dispose();
                 if (debugCommandCookie != 0) debugCommands?.UnregisterPriorityCommandTarget(debugCommandCookie);
                 Instance = null;
             }

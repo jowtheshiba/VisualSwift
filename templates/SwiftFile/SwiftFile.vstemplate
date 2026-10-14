@@ -13,7 +13,7 @@
     <ProjectItem ReplaceParameters="false" OpenInEditor="false">SwiftFile.swift</ProjectItem>
   </TemplateContent>
   <WizardExtension>
-    <Assembly>VisualSwift.VisualStudio, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null</Assembly>
+    <Assembly>VisualSwift.VisualStudio, Version=1.1.0.0, Culture=neutral, PublicKeyToken=null</Assembly>
     <FullClassName>VisualSwift.SwiftItemTemplateWizard</FullClassName>
   </WizardExtension>
 </VSTemplate>

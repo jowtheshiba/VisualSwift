@@ -4,6 +4,12 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
+if (args.Length == 4 && args[3] == "code-actions")
+{
+    await CodeActionChecks.Run(args[0], args[1], args[2]);
+    return;
+}
+
 if (args.Length == 4 && args[3] == "new-file")
 {
     await NewFileChecks.Run(args[0], args[1], args[2]);
@@ -160,6 +166,7 @@ finally
 
 sealed class LspSession : IAsyncDisposable
 {
+    public Action<string, JsonNode?>? Notification { get; set; }
     public string Executable { get; }
     private readonly Process process;
     private readonly Stream input;
@@ -258,6 +265,7 @@ sealed class LspSession : IAsyncDisposable
                     if (message["error"] != null) completion.TrySetException(new InvalidOperationException(message["error"]!.ToJsonString()));
                     else completion.TrySetResult(message["result"]?.DeepClone() ?? JsonValue.Create((string?)null)!);
                 }
+                else if (message["method"] != null) Notification?.Invoke(message["method"]!.ToString(), message["params"]?.DeepClone());
             }
         }
         catch (Exception error)

@@ -52,11 +52,13 @@ namespace VisualSwift
             {
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(token);
                 var workspace = SwiftWorkspace.Current() ?? SwiftRuntime.Workspace;
+                var configuration = SwiftBuildConfigurationEvents.CurrentConfiguration(Package.GetGlobalService(typeof(EnvDTE.DTE)) as EnvDTE.DTE);
                 SwiftRuntime.SetWorkspace(workspace);
                 var toolchain = await Task.Run(() => Toolchain.Resolve(workspace), token);
                 middleLayer.Workspace = workspace;
                 SwiftRuntime.SetServer("Starting", toolchain.BinDirectory, workspace);
                 var startInfo = await Task.Run(() => toolchain.CreateServerStartInfo(workspace), token);
+                if (workspace != null && SwiftProjectSettings.Exists(workspace)) startInfo.Arguments = SwiftProjectSettings.Read(workspace).Profile(configuration).BuildArguments(configuration, "--configuration");
                 var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
                 var job = new SwiftProcessJob();
                 server = process;
@@ -113,6 +115,7 @@ namespace VisualSwift
         public Task AttachForCustomMessageAsync(JsonRpc rpc)
         {
             customRpc = rpc;
+            middleLayer.CodeActions.ResolveAsync = action => rpc.InvokeWithParameterObjectAsync<JToken>("codeAction/resolve", action);
             return Task.CompletedTask;
         }
 
@@ -157,6 +160,7 @@ namespace VisualSwift
             Interlocked.Exchange(ref fileRefresh, null)?.Cancel();
             Interlocked.Exchange(ref fileWatcher, null)?.Dispose();
             customRpc = null;
+            middleLayer.CodeActions.Clear();
             var process = Interlocked.Exchange(ref server, null);
             Interlocked.Exchange(ref serverJob, null)?.Dispose();
             SwiftRuntime.SetServer("Stopped");
@@ -194,12 +198,14 @@ namespace VisualSwift
 
     internal sealed class SwiftMiddleLayer : ILanguageClientMiddleLayer2<JToken>
     {
+        public SwiftCodeActions CodeActions { get; } = new SwiftCodeActions();
         public string Workspace { get; set; }
         public Func<Task> FlushFileChanges { get; set; }
         public bool CanHandle(string methodName) => true;
 
         public async Task HandleNotificationAsync(string methodName, JToken methodParam, Func<JToken, Task> sendNotification)
         {
+            CodeActions.Notification(methodName, methodParam);
             if (methodName == "textDocument/didOpen" && methodParam?["textDocument"] is JObject document)
                 document["languageId"] = "swift";
             PrototypeLog.Write("notification " + methodName + " uri=" + (methodParam?["textDocument"]?["uri"] ?? methodParam?["uri"]));
@@ -220,6 +226,7 @@ namespace VisualSwift
             if (hints != null && !hints.Enabled) return new JArray();
             if (methodName.StartsWith("textDocument/", StringComparison.Ordinal) && FlushFileChanges != null)
                 await FlushFileChanges();
+            if (methodName == "textDocument/codeAction") methodParam = CodeActions.Prepare(methodParam);
             JToken result;
             try { result = await sendRequest(methodParam); }
             catch (Exception error) when (methodName == "textDocument/formatting" || methodName == "textDocument/rangeFormatting")
@@ -228,6 +235,7 @@ namespace VisualSwift
                 throw;
             }
             if (hints != null && result is JArray inlayHints) result = hints.Filter(inlayHints);
+            if (methodName == "textDocument/codeAction") result = await CodeActions.CompleteAsync(result);
             PrototypeLog.Write("response " + methodName + " " + result?.ToString(Newtonsoft.Json.Formatting.None));
             return result;
         }

@@ -3,13 +3,15 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text;
+using System.IO;
 using Microsoft.Win32.SafeHandles;
 
 namespace VisualSwift
 {
     internal static class SwiftProcess
     {
-        public static async Task<string> RunAsync(Toolchain toolchain, string arguments, string workspace, CancellationToken token, TimeSpan? timeout = null)
+        public static async Task<string> RunAsync(Toolchain toolchain, string arguments, string workspace, CancellationToken token, TimeSpan? timeout = null, Action<string> progress = null)
         {
             token.ThrowIfCancellationRequested();
             using (var process = new Process { StartInfo = toolchain.CreateSwiftStartInfo(arguments, workspace), EnableRaisingEvents = true })
@@ -19,8 +21,8 @@ namespace VisualSwift
                 process.Exited += (_, __) => exited.TrySetResult(true);
                 if (!process.Start()) throw new InvalidOperationException("Swift could not be started.");
                 job.Attach(process);
-                var output = process.StandardOutput.ReadToEndAsync();
-                var error = process.StandardError.ReadToEndAsync();
+                var output = ReadAsync(process.StandardOutput, progress);
+                var error = ReadAsync(process.StandardError, progress);
                 var completed = Task.WhenAll(exited.Task, output, error);
                 var duration = timeout ?? TimeSpan.FromSeconds(30);
                 var limit = Task.Delay(duration, token);
@@ -35,6 +37,17 @@ namespace VisualSwift
                 if (process.ExitCode != 0) throw new InvalidOperationException("Swift exited with code " + process.ExitCode + ": " + await error.ConfigureAwait(false));
                 return await output.ConfigureAwait(false);
             }
+        }
+        private static async Task<string> ReadAsync(StreamReader reader, Action<string> progress)
+        {
+            var result = new StringBuilder();
+            string line;
+            while ((line = await reader.ReadLineAsync().ConfigureAwait(false)) != null)
+            {
+                result.AppendLine(line);
+                progress?.Invoke(line);
+            }
+            return result.ToString();
         }
     }
 

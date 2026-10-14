@@ -22,9 +22,12 @@ namespace VisualSwift
             if (dte?.Debugger.CurrentMode != dbgDebugMode.dbgDesignMode) return false;
             try
             {
-                workspace = SwiftWorkspace.Current();
+                var startup = dte.Solution.IsOpen ? dte.Solution.SolutionBuild.StartupProjects as Array : null;
+                if (startup?.Length == 1 && startup.GetValue(0) is string path)
+                    workspace = SwiftWorkspace.FindPackage(System.IO.Path.GetFullPath(System.IO.Path.Combine(System.IO.Path.GetDirectoryName(dte.Solution.FullName), path)));
+                else workspace = SwiftWorkspace.Current();
                 if (workspace == null) return false;
-                options = SwiftDebugOptions.Read(workspace);
+                options = SwiftDebugOptions.Read(workspace, SwiftBuildConfigurationEvents.CurrentConfiguration(dte));
                 return options.UseF5 && !string.IsNullOrWhiteSpace(options.Product);
             }
             catch (Exception) { return false; }

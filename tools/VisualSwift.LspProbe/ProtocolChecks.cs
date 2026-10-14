@@ -18,6 +18,7 @@ static class ProtocolChecks
                     ["textDocument"] = new JObject
                     {
                         ["completion"] = new JObject { ["dynamicRegistration"] = true, ["completionItem"] = new JObject { ["snippetSupport"] = true } },
+                        ["codeAction"] = new JObject { ["codeActionLiteralSupport"] = new JObject { ["codeActionKind"] = new JObject { ["valueSet"] = new JArray("quickfix", "refactor") } }, ["resolveSupport"] = new JObject { ["properties"] = new JArray("documentation") } },
                         ["diagnostic"] = new JObject { ["dynamicRegistration"] = true }
                     }
                 }
@@ -38,6 +39,8 @@ static class ProtocolChecks
             throw new InvalidOperationException("Unrelated completion capabilities were changed.");
         if (adapted["params"]?["capabilities"]?["textDocument"]?["diagnostic"] != null)
             throw new InvalidOperationException("Pull diagnostic capability was not removed.");
+        if (!JToken.DeepEquals(adapted["params"]?["capabilities"]?["textDocument"]?["codeAction"]?["resolveSupport"]?["properties"], new JArray("edit", "command"))) throw new InvalidOperationException("Code action resolution capabilities are incorrect.");
+        if (!JToken.DeepEquals(adapted["params"]?["capabilities"]?["textDocument"]?["codeAction"]?["codeActionLiteralSupport"], message["params"]?["capabilities"]?["textDocument"]?["codeAction"]?["codeActionLiteralSupport"])) throw new InvalidOperationException("Native code action kinds were changed.");
         if (adapted["params"]?["rootUri"]?.Value<string>() != new Uri(workspace + Path.DirectorySeparatorChar).AbsoluteUri)
             throw new InvalidOperationException("Workspace URI was not preserved.");
         var notification = Encoding.UTF8.GetBytes("{\"jsonrpc\":\"2.0\",\"method\":\"initialized\",\"params\":{}}");

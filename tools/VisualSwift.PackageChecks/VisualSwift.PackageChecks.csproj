@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFrameworks>net10.0;net472</TargetFrameworks><LangVersion>latest</LangVersion><ImplicitUsings>enable</ImplicitUsings><Nullable>disable</Nullable></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.3" PrivateAssets="all" /><PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <Compile Include="..\..\src\VisualSwift.VisualStudio\SwiftSettings.cs" Link="SwiftSettings.cs" />
+    <Compile Include="..\..\src\VisualSwift.VisualStudio\Toolchain.cs" Link="Toolchain.cs" />
+    <Compile Include="..\..\src\VisualSwift.VisualStudio\SwiftProcess.cs" Link="SwiftProcess.cs" />
+    <Compile Include="..\..\src\VisualSwift.VisualStudio\SwiftWindowsEnvironment.cs" Link="SwiftWindowsEnvironment.cs" />
+    <Content Include="..\..\templates\Shared\WindowsSwiftEnvironment.ps1" Link="Runtime\WindowsSwiftEnvironment.ps1"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+      <Compile Include="..\..\src\VisualSwift.VisualStudio\SwiftPackages.cs" Link="SwiftPackages.cs" /><Compile Include="..\..\src\VisualSwift.VisualStudio\SwiftManifestDependencies.cs" Link="SwiftManifestDependencies.cs" /><Compile Include="..\..\src\VisualSwift.VisualStudio\PrototypeLog.cs" Link="PrototypeLog.cs" /><Compile Include="..\..\src\VisualSwift.VisualStudio\SwiftProjectSettings.cs" Link="SwiftProjectSettings.cs" /><Compile Include="..\..\src\VisualSwift.VisualStudio\SwiftDebugOptions.cs" Link="SwiftDebugOptions.cs" /></ItemGroup>
+</Project>

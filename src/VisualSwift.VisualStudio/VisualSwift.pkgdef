@@ -3,3 +3,8 @@
 
 [$RootKey$\TextMate\Repositories]
 "VisualSwift"="$PackageFolder$\Grammars"
+
+[$RootKey$\Projects\{A2FE74E1-B743-11d0-AE1A-00A0C90FFFC3}\AddItemTemplates\TemplateDirs\{dbaf72a8-6a28-4316-a5c4-982085c40c5a}\1]
+@="Swift"
+"SortPriority"=dword:0000000A
+"TemplatesDir"="$PackageFolder$\NewFileTemplates"

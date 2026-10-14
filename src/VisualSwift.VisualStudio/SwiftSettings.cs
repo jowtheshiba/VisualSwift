@@ -36,6 +36,10 @@ namespace VisualSwift
             if (workspace == null) throw new InvalidOperationException("No Swift package is open.");
             lock (gate) Write(WorkspacePath(workspace), null);
         }
+        internal void SaveProjectProfiles(string workspace, JObject profiles)
+        {
+            lock (gate) WriteProperty(WorkspacePath(workspace), "projectProfiles", profiles);
+        }
 
         public InlayHintSettings ReadInlayHints(string workspace)
         {
