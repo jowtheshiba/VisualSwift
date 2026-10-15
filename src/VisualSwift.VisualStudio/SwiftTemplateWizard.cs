@@ -14,6 +14,7 @@ namespace VisualSwift
             var root = Path.GetFullPath(replacementsDictionary["$destinationdirectory$"]);
             var templatePath = customParams.Length > 0 ? customParams[0] as string : null;
             var library = string.Equals(Path.GetFileName(templatePath), "SwiftLibrary.vstemplate", StringComparison.OrdinalIgnoreCase);
+            var cxx = string.Equals(Path.GetFileName(templatePath), "SwiftCxx.vstemplate", StringComparison.OrdinalIgnoreCase);
             var files = new Dictionary<string, string>
             {
                 ["VisualSwift\\Invoke-Swift.ps1"] = "VisualSwift.Templates.Invoke-Swift.ps1",
@@ -23,6 +24,12 @@ namespace VisualSwift
             {
                 files["Sources\\Library\\Greeter.swift"] = "VisualSwift.Templates.Library.Greeter.swift";
                 files["Tests\\LibraryTests\\GreeterTests.swift"] = "VisualSwift.Templates.Library.GreeterTests.swift";
+            }
+            else if (cxx)
+            {
+                files["Sources\\App\\main.swift"] = "VisualSwift.Templates.Cxx.main.swift";
+                files["Sources\\CppMath\\CppMath.cpp"] = "VisualSwift.Templates.Cxx.CppMath.cpp";
+                files["Sources\\CppMath\\include\\CppMath.h"] = "VisualSwift.Templates.Cxx.CppMath.h";
             }
             else
             {

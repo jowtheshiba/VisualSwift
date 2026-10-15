@@ -12,5 +12,6 @@
     <Compile Include="..\..\src\VisualSwift.VisualStudio\PrototypeLog.cs" Link="PrototypeLog.cs" />
     <Compile Include="..\..\src\VisualSwift.VisualStudio\SwiftFileWatcher.cs" Link="SwiftFileWatcher.cs" />
     <Compile Include="..\..\src\VisualSwift.VisualStudio\SwiftLspBroker.cs" Link="SwiftLspBroker.cs" />
+    <Compile Include="..\..\src\VisualSwift.VisualStudio\SwiftQuickInfoContent.cs" Link="SwiftQuickInfoContent.cs" />
   </ItemGroup>
 </Project>

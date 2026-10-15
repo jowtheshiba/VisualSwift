@@ -44,6 +44,7 @@ try {
     $buildFlags = [Collections.Generic.List[string]]::new()
     if ($profile) {
         if ($profile.Optimization -and $profile.Optimization -ne 'Default') { $buildFlags.Add('-Xswiftc'); $buildFlags.Add($profile.Optimization) }
+        if ($profile.CxxInteroperability -eq $true) { $buildFlags.Add('-Xswiftc'); $buildFlags.Add('-cxx-interoperability-mode=default') }
         foreach ($condition in $profile.Conditions) { $buildFlags.Add('-Xswiftc'); $buildFlags.Add('-D' + $condition) }
         foreach ($mapping in @(@('SwiftFlags', '-Xswiftc'), @('CFlags', '-Xcc'), @('CxxFlags', '-Xcxx'), @('LinkerFlags', '-Xlinker'))) {
             foreach ($flag in $profile.($mapping[0])) { $buildFlags.Add($mapping[1]); $buildFlags.Add($flag) }

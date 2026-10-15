@@ -21,6 +21,7 @@ namespace VisualSwift
         private readonly SwiftProjectSettings settings;
         private readonly ComboBox configuration = new ComboBox { ItemsSource = new[] { "Debug", "Release" }, SelectedIndex = 0, MinWidth = 160 };
         private readonly ComboBox optimization = new ComboBox { ItemsSource = new[] { "Default", "-Onone", "-O", "-Osize" } };
+        private readonly ComboBox interoperability = new ComboBox { ItemsSource = new[] { "From Package.swift", "Enabled for all Swift targets" }, SelectedIndex = 0 };
         private readonly ComboBox product = new ComboBox { IsEditable = true };
         private readonly Dictionary<string, TextBox> fields = new Dictionary<string, TextBox>();
         private readonly CheckBox build = new CheckBox { Content = "Build before launch (F5)" };
@@ -65,6 +66,8 @@ namespace VisualSwift
             var pages = new Grid(); Grid.SetColumn(pages, 1); body.Children.Add(pages);
             var buildPage = Page(pages);
             Field(buildPage, "Optimization (Default uses SwiftPM defaults)", optimization);
+            Field(buildPage, "C++ interoperability", interoperability);
+            buildPage.Children.Add(new TextBlock { Text = "Package.swift defines target dependencies, public headers and the C++ standard. Enabling this override also applies to Swift test targets.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 4) });
             TextField(buildPage, "Conditions", "Compilation conditions — one identifier per line", 60);
             TextField(buildPage, "SwiftFlags", "Swift flags — one argument per line", 75);
             TextField(buildPage, "CFlags", "C flags — one argument per line", 50);
@@ -117,6 +120,7 @@ namespace VisualSwift
         {
             var profile = settings.Profile(editing);
             optimization.SelectedItem = profile.Optimization;
+            interoperability.SelectedIndex = profile.CxxInteroperability ? 1 : 0;
             foreach (var key in new[] { "Conditions", "SwiftFlags", "CFlags", "CxxFlags", "LinkerFlags", "Arguments" }) fields[key].Text = string.Join(Environment.NewLine, (string[])typeof(SwiftProjectProfile).GetProperty(key).GetValue(profile));
             fields["Environment"].Text = string.Join(Environment.NewLine, profile.Environment.Select(pair => pair.Key + "=" + pair.Value));
             fields["WorkingDirectory"].Text = profile.WorkingDirectory ?? "";
@@ -126,6 +130,7 @@ namespace VisualSwift
         private void Capture()
         {
             var profile = new SwiftProjectProfile { Optimization = (string)optimization.SelectedItem, Product = product.Text.Trim(), WorkingDirectory = fields["WorkingDirectory"].Text.Trim(), BuildBeforeLaunch = build.IsChecked == true, UseF5 = f5.IsChecked == true, StopOnEntry = entry.IsChecked == true };
+            profile.CxxInteroperability = interoperability.SelectedIndex == 1;
             foreach (var key in new[] { "Conditions", "SwiftFlags", "CFlags", "CxxFlags", "LinkerFlags", "Arguments" }) typeof(SwiftProjectProfile).GetProperty(key).SetValue(profile, Lines(fields[key].Text));
             foreach (var line in Lines(fields["Environment"].Text))
             {

@@ -9,6 +9,7 @@ namespace VisualSwift
     internal sealed class SwiftProjectProfile
     {
         public string Optimization { get; set; } = "Default";
+        public bool CxxInteroperability { get; set; }
         public string[] SwiftFlags { get; set; } = Array.Empty<string>();
         public string[] CFlags { get; set; } = Array.Empty<string>();
         public string[] CxxFlags { get; set; } = Array.Empty<string>();
@@ -36,6 +37,7 @@ namespace VisualSwift
             Validate();
             var arguments = new List<string> { configurationOption, configuration.Equals("Release", StringComparison.OrdinalIgnoreCase) ? "release" : "debug" };
             if (Optimization != "Default") { arguments.Add("-Xswiftc"); arguments.Add(Optimization); }
+            if (CxxInteroperability) { arguments.Add("-Xswiftc"); arguments.Add("-cxx-interoperability-mode=default"); }
             foreach (var condition in Conditions) { arguments.Add("-Xswiftc"); arguments.Add("-D" + condition); }
             AddFlags(arguments, "-Xswiftc", SwiftFlags);
             AddFlags(arguments, "-Xcc", CFlags);

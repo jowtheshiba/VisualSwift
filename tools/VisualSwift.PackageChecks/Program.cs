@@ -30,12 +30,14 @@ foreach (var helper in new[] { "Invoke-Swift.ps1", "WindowsSwiftEnvironment.ps1"
 SwiftSettings.Default.Save(args[0], profileRoot, true);
 SwiftSettings.Default.SaveInlayHints(new InlayHintSettings(false, true, false), profileRoot, true);
 var profiles = new SwiftProjectSettings {
-    Debug = new SwiftProjectProfile { Product = "ProfileSmoke", Conditions = ["DEBUG_SAMPLE"], Arguments = ["hello world", "second"], Environment = new Dictionary<string, string> { ["PROFILE_MARK"] = "debug=ok" }, WorkingDirectory = "RunFolder", BuildBeforeLaunch = false, UseF5 = true },
+    Debug = new SwiftProjectProfile { Product = "ProfileSmoke", Conditions = ["DEBUG_SAMPLE"], Arguments = ["hello world", "second"], Environment = new Dictionary<string, string> { ["PROFILE_MARK"] = "debug=ok" }, WorkingDirectory = "RunFolder", BuildBeforeLaunch = false, UseF5 = true, CxxInteroperability = true },
     Release = new SwiftProjectProfile { Product = "ProfileSmoke", Conditions = ["RELEASE_SAMPLE"], Optimization = "-Osize", Arguments = ["release arg"], Environment = new Dictionary<string, string> { ["PROFILE_MARK"] = "release=ok" }, UseF5 = true }
 };
 profiles.Save(profileRoot);
 Assert(SwiftSettings.Default.Read(profileRoot).Path == args[0] && !SwiftSettings.Default.ReadInlayHints(profileRoot).Enabled, "Profiles preserve toolchain and hints");
 var restoredProfiles = SwiftProjectSettings.Read(profileRoot);
+Assert(restoredProfiles.Debug.CxxInteroperability && !restoredProfiles.Release.CxxInteroperability, "C++ interoperability persists independently per configuration");
+Assert(restoredProfiles.Debug.BuildArguments("Debug").Contains("-cxx-interoperability-mode=default") && !restoredProfiles.Release.BuildArguments("Release").Contains("-cxx-interoperability-mode"), "C++ interoperability override and Package.swift fallback");
 Assert(restoredProfiles.Profile("Release").Conditions.SequenceEqual(new[] { "RELEASE_SAMPLE" }), "Release profile persistence");
 Assert(SwiftDebugOptions.Read(profileRoot, "Release").Arguments.SequenceEqual(new[] { "release arg" }), "F5 uses Release profile");
 foreach (var configuration in new[] { "Debug", "Release" }) {

@@ -3,7 +3,12 @@ using System.Text;
 using System.Threading.Channels;
 using Newtonsoft.Json.Linq;
 
-if (args.Length != 4) throw new ArgumentException("Usage: DebugProbe <adapter> <executable> <source> <report>");
+if (args.Length == 5 && args[4] == "cxx")
+{
+    await CxxDebugChecks.Run(args[0], args[1], args[2], args[3]);
+    return;
+}
+if (args.Length != 4) throw new ArgumentException("Usage: DebugProbe <adapter> <executable> <source> <report> [cxx]");
 var report = new JObject();
 using var adapter = new DapClient(args[0]);
 try

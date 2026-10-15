@@ -4,6 +4,12 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
+if (args.Length == 4 && args[3] == "cxx")
+{
+    await CxxChecks.Run(args[0], args[1], args[2]);
+    return;
+}
+
 if (args.Length == 4 && args[3] == "multi-project")
 {
     await MultiProjectChecks.Run(args[0], args[1], args[2]);

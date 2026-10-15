@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Sources" />
+    <Filter Include="Sources\App" /><Filter Include="Sources\CppMath" /><Filter Include="Sources\CppMath\include" />
+    <Filter Include="VisualSwift" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Sources\App\main.swift"><Filter>Sources\App</Filter></None><ClCompile Include="Sources\CppMath\CppMath.cpp"><Filter>Sources\CppMath</Filter></ClCompile><ClInclude Include="Sources\CppMath\include\CppMath.h"><Filter>Sources\CppMath\include</Filter></ClInclude>
+    <None Include="VisualSwift\Invoke-Swift.ps1"><Filter>VisualSwift</Filter></None>
+    <None Include="VisualSwift\WindowsSwiftEnvironment.ps1"><Filter>VisualSwift</Filter></None>
+  </ItemGroup>
+</Project>

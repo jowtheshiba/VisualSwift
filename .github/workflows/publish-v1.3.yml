@@ -1,0 +1,96 @@
+name: Publish VisualSwift 1.3
+
+on:
+  schedule:
+    - cron: '0,15,30,45 9 16 10 *'
+  workflow_dispatch:
+    inputs:
+      validate_only:
+        description: Validate the draft and checksums without publishing
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-visualswift-v1.3
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'jowtheshiba/VisualSwift'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      VALIDATE_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.validate_only }}
+    steps:
+      - name: Validate assets and publish when due
+        shell: python
+        run: |
+          import datetime
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import subprocess
+          import tempfile
+
+          def gh(*args):
+              return subprocess.run(['gh', *args], check=True, capture_output=True, text=True).stdout
+
+          tag = 'v1.3.0'
+          due = datetime.datetime.fromisoformat('2026-10-16T09:00:00+00:00')
+          now = datetime.datetime.now(datetime.timezone.utc)
+          validate_only = os.environ.get('VALIDATE_ONLY') == 'true'
+          if not validate_only and (now < due or now.year != due.year):
+              print('Publication is scheduled for 16 October 2026, 12:00 Europe/Kyiv.')
+              raise SystemExit(0)
+
+          pages = json.loads(gh('api', f'repos/{os.environ["GH_REPO"]}/releases', '--paginate', '--slurp'))
+          matches = [release for page in pages for release in page if release['tag_name'] == tag]
+          if len(matches) != 1:
+              raise RuntimeError('Expected exactly one prepared v1.3.0 release.')
+          release = matches[0]
+          if not release['draft']:
+              print('VisualSwift 1.3 is already published; nothing to change.')
+              raise SystemExit(0)
+          if release['prerelease'] or release['name'] != 'VisualSwift 1.3':
+              raise RuntimeError('Unexpected release title or prerelease state.')
+          expected = {f'VisualSwift-1.3.0-{variant}.vsix' for variant in ('arm64', 'x86_64', 'universal')}
+          expected.add('VisualSwift-1.3.0-source.zip')
+          assets = release['assets']
+          if len(assets) != 5 or {asset['name'] for asset in assets} != expected | {'SHA256SUMS.txt'}:
+              raise RuntimeError('The release must contain exactly three VSIX files, sources and checksums.')
+          if any(asset['state'] != 'uploaded' or asset['size'] <= 0 for asset in assets):
+              raise RuntimeError('An asset is missing or incomplete.')
+          gh('api', f'repos/{os.environ["GH_REPO"]}/git/ref/tags/{tag}')
+          with tempfile.TemporaryDirectory() as directory:
+              gh('release', 'download', tag, '--dir', directory)
+              root = pathlib.Path(directory)
+              sums = {}
+              for line in (root / 'SHA256SUMS.txt').read_text(encoding='utf-8-sig').splitlines():
+                  digest, name = line.split(None, 1)
+                  name = name.lstrip('* ')
+                  if name in sums:
+                      raise RuntimeError('Duplicate checksum entry.')
+                  sums[name] = digest.lower()
+              if set(sums) != expected:
+                  raise RuntimeError('Checksums do not cover exactly the four release packages.')
+              for name in expected:
+                  if hashlib.sha256((root / name).read_bytes()).hexdigest() != sums[name]:
+                      raise RuntimeError(f'Checksum mismatch: {name}')
+          result = 'Validated draft, all five assets and SHA-256 checksums.'
+          if not validate_only:
+              gh('release', 'edit', tag, '--draft=false', '--latest')
+              state = json.loads(gh('api', f'repos/{os.environ["GH_REPO"]}/releases/{release["id"]}'))
+              if state['draft'] or not state['published_at']:
+                  raise RuntimeError('GitHub did not confirm publication.')
+              result += '\nPublished VisualSwift 1.3: ' + state['html_url']
+          else:
+              result += '\nPublication remains scheduled for 16 October 2026 at 12:00 Europe/Kyiv (09:00 UTC).'
+          print(result)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
+              summary.write(result + '\n')

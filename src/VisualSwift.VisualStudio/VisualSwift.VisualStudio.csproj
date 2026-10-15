@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
     <VSSDKBuildToolsAutoSetup>true</VSSDKBuildToolsAutoSetup>
     <LangVersion>latest</LangVersion>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
@@ -49,6 +49,7 @@
     <Content Include="..\..\assets\icons\visualswift.ico" Link="Assets\visualswift.ico"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="$(IntermediateOutputPath)ProjectTemplates\SwiftConsole.zip" Link="ProjectTemplates\SwiftConsole.zip"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="$(IntermediateOutputPath)ProjectTemplates\SwiftLibrary.zip" Link="ProjectTemplates\SwiftLibrary.zip"><IncludeInVSIX>true</IncludeInVSIX></Content>
+    <Content Include="$(IntermediateOutputPath)ProjectTemplates\SwiftCxx.zip" Link="ProjectTemplates\SwiftCxx.zip"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="$(IntermediateOutputPath)ItemTemplates\SwiftFile.zip" Link="ItemTemplates\SwiftFile.zip"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="..\VisualSwift.TestAdapter\bin\$(Configuration)\net472\VisualSwift.TestAdapter.dll" Link="TestAdapter\VisualSwift.TestAdapter.dll"><IncludeInVSIX>true</IncludeInVSIX></Content>
     <Content Include="..\VisualSwift.TestAdapter\bin\$(Configuration)\net472\Newtonsoft.Json.dll" Link="TestAdapter\Newtonsoft.Json.dll"><IncludeInVSIX>true</IncludeInVSIX></Content>
@@ -58,6 +59,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="..\..\templates\SwiftConsole\Sources\App\main.swift" LogicalName="VisualSwift.Templates.Console.main.swift" />
+    <EmbeddedResource Include="..\..\templates\SwiftCxx\Sources\App\main.swift" LogicalName="VisualSwift.Templates.Cxx.main.swift" />
+    <EmbeddedResource Include="..\..\templates\SwiftCxx\Sources\CppMath\CppMath.cpp" LogicalName="VisualSwift.Templates.Cxx.CppMath.cpp" />
+    <EmbeddedResource Include="..\..\templates\SwiftCxx\Sources\CppMath\include\CppMath.h" LogicalName="VisualSwift.Templates.Cxx.CppMath.h" />
     <EmbeddedResource Include="..\..\templates\SwiftLibrary\Sources\Library\Greeter.swift" LogicalName="VisualSwift.Templates.Library.Greeter.swift" />
     <EmbeddedResource Include="..\..\templates\SwiftLibrary\Tests\LibraryTests\GreeterTests.swift" LogicalName="VisualSwift.Templates.Library.GreeterTests.swift" />
     <EmbeddedResource Include="..\..\templates\Shared\Invoke-Swift.ps1" LogicalName="VisualSwift.Templates.Invoke-Swift.ps1" />
@@ -68,9 +72,12 @@
     <ItemGroup>
       <ConsoleTemplateFiles Include="$(MSBuildProjectDirectory)\..\..\templates\SwiftConsole\**\*" />
       <LibraryTemplateFiles Include="$(MSBuildProjectDirectory)\..\..\templates\SwiftLibrary\**\*" />
+      <CxxTemplateFiles Include="$(MSBuildProjectDirectory)\..\..\templates\SwiftCxx\**\*" />
     </ItemGroup>
     <Copy SourceFiles="@(ConsoleTemplateFiles)" DestinationFiles="@(ConsoleTemplateFiles->'$(IntermediateOutputPath)TemplateStaging\SwiftConsole\%(RecursiveDir)%(Filename)%(Extension)')" />
     <Copy SourceFiles="@(LibraryTemplateFiles)" DestinationFiles="@(LibraryTemplateFiles->'$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(CxxTemplateFiles)" DestinationFiles="@(CxxTemplateFiles->'$(IntermediateOutputPath)TemplateStaging\SwiftCxx\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="..\..\templates\Shared\gitignore.txt;..\..\assets\icons\swift-console.ico;..\..\templates\Shared\Invoke-Swift.ps1;..\..\templates\Shared\WindowsSwiftEnvironment.ps1" DestinationFiles="$(IntermediateOutputPath)TemplateStaging\SwiftCxx\gitignore.txt;$(IntermediateOutputPath)TemplateStaging\SwiftCxx\template.ico;$(IntermediateOutputPath)TemplateStaging\SwiftCxx\VisualSwift\Invoke-Swift.ps1;$(IntermediateOutputPath)TemplateStaging\SwiftCxx\VisualSwift\WindowsSwiftEnvironment.ps1" />
     <Copy SourceFiles="..\..\templates\Shared\gitignore.txt;..\..\assets\icons\swift-console.ico;..\..\templates\Shared\Invoke-Swift.ps1" DestinationFiles="$(IntermediateOutputPath)TemplateStaging\SwiftConsole\gitignore.txt;$(IntermediateOutputPath)TemplateStaging\SwiftConsole\template.ico;$(IntermediateOutputPath)TemplateStaging\SwiftConsole\VisualSwift\Invoke-Swift.ps1" />
     <Copy SourceFiles="..\..\templates\Shared\WindowsSwiftEnvironment.ps1;..\..\templates\Shared\WindowsSwiftEnvironment.ps1" DestinationFiles="$(IntermediateOutputPath)TemplateStaging\SwiftConsole\VisualSwift\WindowsSwiftEnvironment.ps1;$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\VisualSwift\WindowsSwiftEnvironment.ps1" />
     <Copy SourceFiles="..\..\templates\Shared\gitignore.txt;..\..\assets\icons\swift-library.ico;..\..\templates\Shared\Invoke-Swift.ps1" DestinationFiles="$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\gitignore.txt;$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\template.ico;$(IntermediateOutputPath)TemplateStaging\SwiftLibrary\VisualSwift\Invoke-Swift.ps1" />
@@ -82,6 +89,7 @@
     <ZipDirectory SourceDirectory="$(IntermediateOutputPath)TemplateStaging\SwiftFile" DestinationFile="$(IntermediateOutputPath)ItemTemplates\SwiftFile.zip" Overwrite="true" />
     <ZipDirectory SourceDirectory="$(IntermediateOutputPath)TemplateStaging\SwiftConsole" DestinationFile="$(IntermediateOutputPath)ProjectTemplates\SwiftConsole.zip" Overwrite="true" />
     <ZipDirectory SourceDirectory="$(IntermediateOutputPath)TemplateStaging\SwiftLibrary" DestinationFile="$(IntermediateOutputPath)ProjectTemplates\SwiftLibrary.zip" Overwrite="true" />
+    <ZipDirectory SourceDirectory="$(IntermediateOutputPath)TemplateStaging\SwiftCxx" DestinationFile="$(IntermediateOutputPath)ProjectTemplates\SwiftCxx.zip" Overwrite="true" />
   </Target>
   <Target Name="CheckTestWindowSdk" BeforeTargets="ResolveReferences">
     <Error Condition="!Exists('$(VisualStudioTestWindowPath)\Microsoft.VisualStudio.TestWindow.Interfaces.dll')" Text="Set VisualStudioTestWindowPath to the installed Visual Studio Common7\IDE\CommonExtensions\Microsoft\TestWindow directory, or use scripts/build.ps1." />

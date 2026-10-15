@@ -38,6 +38,7 @@ function Test-Installer([string]$Path, [string[]]$Architectures) {
         $required = @('extension.vsixmanifest', 'VisualSwift.VisualStudio.dll', 'TestAdapter/VisualSwift.TestAdapter.dll',
             'TestAdapter/Newtonsoft.Json.dll', 'TestAdapter/LICENSE.Newtonsoft.Json.md', 'LICENSE', 'NOTICE',
             'ProjectTemplates/SwiftConsole/SwiftConsole.vstemplate', 'ProjectTemplates/SwiftLibrary/SwiftLibrary.vstemplate',
+            'ProjectTemplates/SwiftCxx/SwiftCxx.vstemplate', 'ProjectTemplates/SwiftCxx/Sources/CppMath/include/CppMath.h', 'ProjectTemplates/SwiftCxx/Sources/CppMath/CppMath.cpp',
             'Runtime/WindowsSwiftEnvironment.ps1', 'Runtime/Invoke-Swift.ps1', 'TestAdapter/Runtime/WindowsSwiftEnvironment.ps1',
             'ItemTemplates/SwiftFile/SwiftFile.vstemplate', 'ItemTemplates/SwiftFile/SwiftFile.swift',
             'NewFileTemplates/SwiftFile.swift', 'NewFileTemplates/SwiftFiles.vsdir',

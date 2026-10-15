@@ -217,6 +217,7 @@ namespace VisualSwift
         public async Task<JToken> HandleRequestAsync(string methodName, JToken methodParam, Func<JToken, Task<JToken>> sendRequest)
         {
             if (methodName == "textDocument/foldingRange") return new JArray();
+            if (methodName == "textDocument/hover") return null;
             if (methodName == "initialize" && Workspace != null && methodParam is JObject initialize)
             {
                 var uri = new Uri(Workspace + Path.DirectorySeparatorChar).AbsoluteUri;
@@ -238,6 +239,7 @@ namespace VisualSwift
                 PrototypeLog.Write("Swift formatting failed: " + error.Message);
                 throw;
             }
+            if (methodName == "initialize" && result?["capabilities"] is JObject capabilities) capabilities["hoverProvider"] = false;
             if (hints != null && result is JArray inlayHints) result = hints.Filter(inlayHints);
             if (methodName == "textDocument/codeAction") result = await CodeActions.CompleteAsync(result);
             PrototypeLog.Write("response " + methodName + " " + result?.ToString(Newtonsoft.Json.Formatting.None));

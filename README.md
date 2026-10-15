@@ -1,6 +1,6 @@
 # VisualSwift
 
-Version **1.2**.
+Version **1.3**.
 
 Swift language support for Microsoft Visual Studio on Windows, powered by SourceKit-LSP and Swift Package Manager.
 
@@ -14,9 +14,9 @@ Build Release installers with:
 
 Packages are written to `artifacts/installers`:
 
-- `VisualSwift-1.2.0-universal.vsix` for ARM64 and x86_64.
-- `VisualSwift-1.2.0-arm64.vsix` for ARM64.
-- `VisualSwift-1.2.0-x86_64.vsix` for x86_64.
+- `VisualSwift-1.3.0-universal.vsix` for ARM64 and x86_64.
+- `VisualSwift-1.3.0-arm64.vsix` for ARM64.
+- `VisualSwift-1.3.0-x86_64.vsix` for x86_64.
 
 Choose one package, close Visual Studio, double-click the VSIX, and select the target IDE instance. All variants share one extension identity and support upgrades from earlier versions. SHA-256 checksums and package validation results are included alongside the installers. Packages are unsigned; VSIX Installer may show an unverified publisher.
 
@@ -28,7 +28,8 @@ To uninstall, open **Extensions > Manage Extensions > Installed**, select **Visu
 
 ## Features
 
-- Swift completion, syntax highlighting, Quick Info and diagnostics.
+- Swift completion, syntax highlighting and diagnostics.
+- Native Visual Studio Quick Info with symbol icons, colored signatures and documentation.
 - Multiple Swift projects per solution, with independent language servers, toolchains, build profiles and Test Explorer containers. F5 follows the startup project.
 - Code Search, Go To Definition, type navigation and Find All References.
 - Call Hierarchy and Type Hierarchy in the Swift window, with source navigation and call sites.
@@ -38,14 +39,18 @@ To uninstall, open **Extensions > Manage Extensions > Installed**, select **Visu
 - Manual Format Document and Format Selection.
 - SwiftPM tests in Test Explorer (XCTest and Swift Testing).
 - Console and library project templates with Build/Rebuild/Clean.
+- **Swift + C++ Console Application** template with a C++17 library, public headers and SwiftPM interoperability.
 - **Add > New Item > Swift File** with SwiftPM target selection.
 - **File > New > File > Swift File** for a standalone source file.
 - SwiftPM dependencies in Solution Explorer: add packages and products, resolve, update and remove with manifest preview.
 - **Swift Project Settings** in Solution Explorer: Debug/Release build flags, compilation conditions and launch profiles.
+- Per-configuration C++ interoperability override: use **From Package.swift** or **Enabled for all Swift targets** in the project's Build settings.
 - LLDB debugging: F5, breakpoints, stepping, Call Stack, Locals and Watch.
 - Automatic language server refresh when Swift files are added, removed or renamed.
 
 Open **Extensions > Swift** for toolchain, language server, package, debug and output settings. Use the **Project** selector to inspect a specific Swift package; editor navigation also selects the corresponding project. Project folders inside solution folders are supported.
+
+For a mixed-language project, search for **Swift + C++** in **File > New > Project**. The template separates `Sources/App` and `Sources/CppMath`, imports the public `CppMath.h` header and prints `Swift + C++: 42`. SwiftPM builds both targets; Visual Studio's native C++ editor handles `.cpp` and `.h` files. F5 generates DWARF symbols for the local C/C++ targets as well as Swift. The interoperability override applies to all Swift targets, including tests; leaving it at **From Package.swift** preserves the manifest's per-target settings. C++ dependencies and the language standard remain defined in `Package.swift`.
 
 ## Build and verification
 

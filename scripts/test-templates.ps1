@@ -1,4 +1,4 @@
-param([Parameter(Mandatory = $true)][string]$InstanceId, [ValidateSet('ARM64', 'x64')][string]$Platform = 'ARM64')
+param([Parameter(Mandatory = $true)][string]$InstanceId, [ValidateSet('ARM64', 'x64')][string]$Platform = 'ARM64', [ValidateSet('SwiftConsole', 'SwiftLibrary', 'SwiftCxx')][string[]]$Templates = @('SwiftConsole', 'SwiftLibrary', 'SwiftCxx'), [ValidateSet('Debug', 'Release')][string]$TemplateConfiguration = 'Debug')
 
 $ErrorActionPreference = 'Stop'
 $repository = Split-Path -Parent $PSScriptRoot
@@ -10,10 +10,10 @@ $runDirectory = Join-Path $repository ('artifacts\template-smoke\' + [Guid]::New
 New-Item -ItemType Directory -Path $runDirectory -Force | Out-Null
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $results = @()
-foreach ($template in @('SwiftConsole', 'SwiftLibrary')) {
+foreach ($template in $Templates) {
     $name = "${template}Smoke"
     $destination = Join-Path $runDirectory "$template with spaces"
-    $archive = Join-Path $repository "src\VisualSwift.VisualStudio\obj\Debug\net472\ProjectTemplates\$template.zip"
+    $archive = Join-Path $repository "src\VisualSwift.VisualStudio\obj\$TemplateConfiguration\net472\ProjectTemplates\$template.zip"
     $staging = Join-Path $runDirectory "$template archive"
     [System.IO.Compression.ZipFile]::ExtractToDirectory($archive, $staging)
     [xml]$definition = Get-Content (Join-Path $staging "$template.vstemplate") -Raw
@@ -35,16 +35,16 @@ foreach ($template in @('SwiftConsole', 'SwiftLibrary')) {
         [System.IO.File]::WriteAllText($file, $text, (New-Object System.Text.UTF8Encoding($false)))
     }
     $project = Join-Path $destination "$name.vcxproj"
-    if ($template -eq 'SwiftConsole') {
+    if ($template -in @('SwiftConsole', 'SwiftCxx')) {
         $projectText = [IO.File]::ReadAllText($project)
         if (!$projectText.Contains("$name.exe</NMakeOutput>") -or !$projectText.Contains('<LocalDebuggerCommand>$(NMakeOutput)</LocalDebuggerCommand>')) { throw 'The console launch target must be the Swift executable.' }
     }
     & $msbuild $project /t:Build /p:Configuration=Debug "/p:Platform=$Platform" /v:minimal /nologo
     if ($LASTEXITCODE -ne 0) { throw "$template Debug build failed." }
-    if ($template -eq 'SwiftConsole' -and !(Test-Path -LiteralPath (Join-Path $destination ".build\debug\$name.exe") -PathType Leaf)) { throw 'The declared console launch executable does not exist.' }
+    if ($template -in @('SwiftConsole', 'SwiftCxx') -and !(Test-Path -LiteralPath (Join-Path $destination ".build\debug\$name.exe") -PathType Leaf)) { throw 'The declared console launch executable does not exist.' }
     & $msbuild $project /t:Rebuild /p:Configuration=Release "/p:Platform=$Platform" /v:minimal /nologo
     if ($LASTEXITCODE -ne 0) { throw "$template Release rebuild failed." }
-    $action = if ($template -eq 'SwiftConsole') { 'Run' } else { 'Test' }
+    $action = if ($template -in @('SwiftConsole', 'SwiftCxx')) { 'Run' } else { 'Test' }
     & (Join-Path $destination 'VisualSwift\Invoke-Swift.ps1') -Command $action -Configuration Release
     if ($LASTEXITCODE -ne 0) { throw "$template $action failed." }
     & $msbuild $project /t:Clean /p:Configuration=Release "/p:Platform=$Platform" /v:minimal /nologo

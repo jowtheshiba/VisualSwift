@@ -36,7 +36,8 @@ namespace VisualSwift
                 if (profile.BuildBeforeLaunch)
                 {
                     PrototypeLog.Write("Building Swift " + configuration + " product " + options.Product + " with LLVM/DWARF.");
-                    var build = await SwiftProcess.RunAsync(toolchain, "build " + profile.BuildArguments(configuration) + " --product " + Quote(options.Product) + " -Xswiftc -g -Xswiftc -use-ld=lld -Xlinker /debug:dwarf", workspace, token, TimeSpan.FromMinutes(5));
+                    var nativeDebug = (description["targets"] as JArray ?? new JArray()).Any(target => (string)target["module_type"] == "ClangTarget") ? " -Xcc -g -Xcc -gdwarf-4 -Xcxx -g -Xcxx -gdwarf-4" : "";
+                    var build = await SwiftProcess.RunAsync(toolchain, "build " + profile.BuildArguments(configuration) + " --product " + Quote(options.Product) + " -Xswiftc -g -Xswiftc -use-ld=lld -Xlinker /debug:dwarf" + nativeDebug, workspace, token, TimeSpan.FromMinutes(5));
                     PrototypeLog.Write(build);
                 }
                 var bin = (await SwiftProcess.RunAsync(toolchain, "build " + profile.BuildArguments(configuration) + " --show-bin-path", workspace, token)).Trim();
