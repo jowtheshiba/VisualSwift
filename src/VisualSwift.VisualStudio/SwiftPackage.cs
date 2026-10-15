@@ -40,6 +40,9 @@ namespace VisualSwift
                 windowEvents = dte.Events.WindowEvents;
                 solutionEvents.Opened += UpdateWorkspace;
                 solutionEvents.AfterClosing += UpdateWorkspace;
+                solutionEvents.ProjectAdded += ProjectChanged;
+                solutionEvents.ProjectRemoved += ProjectChanged;
+                solutionEvents.ProjectRenamed += ProjectRenamed;
                 windowEvents.WindowActivated += WindowActivated;
             }
             UpdateWorkspace();
@@ -51,6 +54,17 @@ namespace VisualSwift
             WriteOutput("VisualSwift loaded. File log: " + PrototypeLog.FilePath);
             var menu = await GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
             Add(menu, 0x0101, async () => await ShowSwiftWindowAsync());
+            foreach (var commandId in new[] { 0x0301, 0x0302 })
+            {
+                var types = commandId == 0x0302;
+                var command = Add(menu, commandId, () => ShowHierarchyAsync(types));
+                command.BeforeQueryStatus += (_, __) =>
+                {
+                    var available = dte?.ActiveDocument?.FullName?.EndsWith(".swift", StringComparison.OrdinalIgnoreCase) == true;
+                    command.Visible = available;
+                    command.Enabled = available && SwiftRuntime.State == "Running";
+                };
+            }
             if (dte != null && menu != null) dependencyExplorer = new SwiftDependencyExplorer(dte, menu, DisposalToken);
             if (dte != null) buildConfigurations = new SwiftBuildConfigurationEvents(dte, DisposalToken);
             debugCommands = await GetServiceAsync(typeof(SVsRegisterPriorityCommandTarget)) as IVsRegisterPriorityCommandTarget;
@@ -84,9 +98,18 @@ namespace VisualSwift
         private void UpdateWorkspace()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            try { SwiftRuntime.SetWorkspace(SwiftWorkspace.Current()); }
+            try
+            {
+                var dte = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(EnvDTE.DTE)) as EnvDTE.DTE;
+                var current = SwiftWorkspace.Current();
+                var roots = SwiftWorkspace.Projects(dte);
+                SwiftRuntime.SetProjects(dte?.Solution.IsOpen == true || current == null ? roots : new[] { current });
+                SwiftRuntime.SetWorkspace(current);
+            }
             catch (Exception error) { PrototypeLog.Write("Swift workspace update: " + error.Message); }
         }
+        private void ProjectChanged(EnvDTE.Project project) { ThreadHelper.ThrowIfNotOnUIThread(); UpdateWorkspace(); }
+        private void ProjectRenamed(EnvDTE.Project project, string previous) { ThreadHelper.ThrowIfNotOnUIThread(); UpdateWorkspace(); }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSTHRD100", Justification = "The menu callback returns void; asynchronous operation errors are handled here.")]
         private async void ExecuteCommand(Func<Task> action)
@@ -113,6 +136,19 @@ namespace VisualSwift
             await restart();
         }
 
+        private async Task ShowHierarchyAsync(bool types)
+        {
+            await JoinableTaskFactory.SwitchToMainThreadAsync(DisposalToken);
+            var dte = await GetServiceAsync(typeof(EnvDTE.DTE)) as EnvDTE.DTE;
+            var document = dte?.ActiveDocument;
+            if (!(document?.Selection is EnvDTE.TextSelection selected)) return;
+            var uri = new Uri(document.FullName).AbsoluteUri;
+            var line = selected.ActivePoint.Line - 1;
+            var character = selected.ActivePoint.LineCharOffset - 1;
+            var window = await ShowToolWindowAsync(typeof(SwiftToolWindow), 0, true, DisposalToken);
+            await ((SwiftWindowControl)window.Content).ShowHierarchyAsync(uri, line, character, types);
+        }
+
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSTHRD010", Justification = "IVsOutputWindowPane.OutputStringThreadSafe explicitly supports background callers.")]
         private void WriteOutput(string message)
         {
@@ -125,7 +161,7 @@ namespace VisualSwift
             ThreadHelper.ThrowIfNotOnUIThread();
             if (disposing)
             {
-                if (solutionEvents != null) { solutionEvents.Opened -= UpdateWorkspace; solutionEvents.AfterClosing -= UpdateWorkspace; }
+                if (solutionEvents != null) { solutionEvents.Opened -= UpdateWorkspace; solutionEvents.AfterClosing -= UpdateWorkspace; solutionEvents.ProjectAdded -= ProjectChanged; solutionEvents.ProjectRemoved -= ProjectChanged; solutionEvents.ProjectRenamed -= ProjectRenamed; }
                 if (windowEvents != null) windowEvents.WindowActivated -= WindowActivated;
                 PrototypeLog.Written -= WriteOutput;
                 dependencyExplorer?.Dispose();

@@ -168,7 +168,7 @@ namespace VisualSwift
                 if (path.Length == 0) SwiftSettings.Default.ClearWorkspace(workspace); else SwiftSettings.Default.Save(path, workspace, true);
                 ApplyNativeLaunch(); project.Save();
                 status.Text = "Saved Debug and Release profiles for " + project.Name + ".";
-                if (SwiftRuntime.Workspace == workspace && SwiftRuntime.Restart != null) await SwiftRuntime.Restart();
+                if (SwiftRuntime.Restart != null) await SwiftRuntime.Restart();
                 if (close) Close();
             }
             catch (OperationCanceledException) { }

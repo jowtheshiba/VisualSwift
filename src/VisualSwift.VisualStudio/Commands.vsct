@@ -6,6 +6,7 @@
     <Groups>
       <Group guid="guidCommands" id="SwiftMenuGroup" priority="0x0600"><Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_EXTENSIONS" /></Group>
       <Group guid="guidCommands" id="SwiftDependenciesGroup" priority="0x0700"><Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_PROJNODE" /></Group>
+      <Group guid="guidCommands" id="SwiftHierarchyGroup" priority="0x0750"><Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_CODEWIN" /></Group>
     </Groups>
     <Buttons>
       <Button guid="guidCommands" id="ShowWindow" priority="0x0100" type="Button"><Parent guid="guidCommands" id="SwiftMenuGroup" /><Strings><ButtonText>Swift</ButtonText></Strings></Button>
@@ -17,6 +18,8 @@
       <Button guid="guidCommands" id="RemovePackage" priority="0x0105" type="Button"><Parent guid="guidCommands" id="SwiftDependenciesGroup" /><CommandFlag>DynamicVisibility</CommandFlag><CommandFlag>DefaultInvisible</CommandFlag><Strings><ButtonText>Remove Swift Package…</ButtonText></Strings></Button>
       <Button guid="guidCommands" id="OpenPackage" priority="0x0106" type="Button"><Parent guid="guidCommands" id="SwiftDependenciesGroup" /><CommandFlag>DynamicVisibility</CommandFlag><CommandFlag>DefaultInvisible</CommandFlag><Strings><ButtonText>Open Swift Package</ButtonText></Strings></Button>
       <Button guid="guidCommands" id="ProjectSettings" priority="0x0107" type="Button"><Parent guid="guidCommands" id="SwiftDependenciesGroup" /><CommandFlag>DynamicVisibility</CommandFlag><CommandFlag>DefaultInvisible</CommandFlag><Strings><ButtonText>Swift Project Settings…</ButtonText></Strings></Button>
+      <Button guid="guidCommands" id="CallHierarchy" priority="0x0100" type="Button"><Parent guid="guidCommands" id="SwiftHierarchyGroup" /><CommandFlag>DynamicVisibility</CommandFlag><CommandFlag>DefaultInvisible</CommandFlag><Strings><ButtonText>Swift Call Hierarchy</ButtonText></Strings></Button>
+      <Button guid="guidCommands" id="TypeHierarchy" priority="0x0101" type="Button"><Parent guid="guidCommands" id="SwiftHierarchyGroup" /><CommandFlag>DynamicVisibility</CommandFlag><CommandFlag>DefaultInvisible</CommandFlag><Strings><ButtonText>Swift Type Hierarchy</ButtonText></Strings></Button>
     </Buttons>
   </Commands>
   <CommandPlacements>
@@ -26,6 +29,7 @@
   <Symbols>
     <GuidSymbol name="guidPackage" value="{dbaf72a8-6a28-4316-a5c4-982085c40c5a}" />
     <GuidSymbol name="guidCommands" value="{5d796222-e1ce-44f3-9492-5475d8dac383}">
+      <IDSymbol name="SwiftHierarchyGroup" value="0x1002" /><IDSymbol name="CallHierarchy" value="0x0301" /><IDSymbol name="TypeHierarchy" value="0x0302" />
       <IDSymbol name="SwiftMenuGroup" value="0x1000" /><IDSymbol name="ShowWindow" value="0x0101" />
       <IDSymbol name="SwiftDependenciesGroup" value="0x1001" />
       <IDSymbol name="ProjectSettings" value="0x0208" /><IDSymbol name="ManagePackages" value="0x0201" /><IDSymbol name="AddPackage" value="0x0202" /><IDSymbol name="ResolvePackages" value="0x0203" /><IDSymbol name="UpdateAllPackages" value="0x0204" /><IDSymbol name="UpdatePackage" value="0x0205" /><IDSymbol name="RemovePackage" value="0x0206" /><IDSymbol name="OpenPackage" value="0x0207" />

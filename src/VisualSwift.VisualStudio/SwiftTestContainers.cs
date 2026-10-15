@@ -15,10 +15,8 @@ namespace VisualSwift
     internal sealed class SwiftTestContainers : ITestContainerDiscoverer, IDisposable
     {
         private readonly object gate = new object();
-        private SwiftFileWatcher watcher;
-        private string workspace;
-        private string selectedToolchain;
-        private long revision;
+        private readonly Dictionary<string, ProjectTests> projects = new Dictionary<string, ProjectTests>(StringComparer.OrdinalIgnoreCase);
+        private sealed class ProjectTests { internal SwiftFileWatcher Watcher; internal string Settings; internal long Revision; }
         private bool disposed;
         public Uri ExecutorUri { get; } = new Uri("executor://visualswift/swiftpm/v1");
         public event EventHandler TestContainersUpdated;
@@ -36,34 +34,41 @@ namespace VisualSwift
             {
                 lock (gate)
                 {
-                    var source = workspace == null ? null : Path.Combine(workspace, "Package.swift");
-                    return source == null || !File.Exists(source) ? Enumerable.Empty<ITestContainer>() : new[] { new SwiftTestContainer(this, source, revision) };
+                    return projects.Where(project => File.Exists(Path.Combine(project.Key, "Package.swift"))).Select(project => (ITestContainer)new SwiftTestContainer(this, Path.Combine(project.Key, "Package.swift"), project.Value.Revision)).ToArray();
                 }
             }
         }
 
         private void RuntimeChanged()
         {
-            var next = SwiftRuntime.Workspace;
-            string selection;
-            try { selection = SwiftSettings.Default.Read(next).Path; }
-            catch (Exception error) { PrototypeLog.Write("Swift Test Explorer settings: " + error.Message); return; }
+            var next = SwiftRuntime.Workspaces;
+            var changed = false;
             lock (gate)
             {
-                if (disposed || (string.Equals(next, workspace, StringComparison.OrdinalIgnoreCase) && string.Equals(selection, selectedToolchain, StringComparison.OrdinalIgnoreCase))) return;
-                watcher?.Dispose();
-                watcher = null;
-                workspace = next;
-                selectedToolchain = selection;
-                revision++;
-                if (workspace != null && Directory.Exists(workspace)) watcher = new SwiftFileWatcher(workspace, _ => { Update(); return Task.CompletedTask; });
+                if (disposed) return;
+                foreach (var removed in projects.Keys.Where(root => !next.Contains(root, StringComparer.OrdinalIgnoreCase)).ToArray()) { projects[removed].Watcher?.Dispose(); projects.Remove(removed); changed = true; }
+                foreach (var root in next)
+                {
+                    try
+                    {
+                        var selection = SwiftSettings.Default.Read(root).Path + "|" + File.GetLastWriteTimeUtc(SwiftProjectSettings.FilePath(root)).Ticks;
+                        if (!projects.TryGetValue(root, out var project))
+                        {
+                            projects[root] = project = new ProjectTests();
+                            if (Directory.Exists(root)) project.Watcher = new SwiftFileWatcher(root, _ => { Update(root); return Task.CompletedTask; });
+                        }
+                        else if (selection == project.Settings) continue;
+                        project.Settings = selection; project.Revision++; changed = true;
+                    }
+                    catch (Exception error) { PrototypeLog.Write("Swift Test Explorer settings [" + root + "]: " + error.Message); }
+                }
             }
-            TestContainersUpdated?.Invoke(this, EventArgs.Empty);
+            if (changed) TestContainersUpdated?.Invoke(this, EventArgs.Empty);
         }
 
-        private void Update()
+        private void Update(string root)
         {
-            lock (gate) { if (disposed) return; revision++; }
+            lock (gate) { if (disposed || !projects.TryGetValue(root, out var project)) return; project.Revision++; }
             PrototypeLog.Write("Swift Test Explorer containers updated.");
             TestContainersUpdated?.Invoke(this, EventArgs.Empty);
         }
@@ -75,8 +80,8 @@ namespace VisualSwift
                 if (disposed) return;
                 disposed = true;
                 SwiftRuntime.Changed -= RuntimeChanged;
-                watcher?.Dispose();
-                watcher = null;
+                foreach (var project in projects.Values) project.Watcher?.Dispose();
+                projects.Clear();
             }
         }
     }

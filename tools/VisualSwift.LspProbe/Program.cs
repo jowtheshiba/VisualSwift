@@ -4,6 +4,24 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
+if (args.Length == 4 && args[3] == "multi-project")
+{
+    await MultiProjectChecks.Run(args[0], args[1], args[2]);
+    return;
+}
+
+if (args.Length == 4 && args[3] == "semantic")
+{
+    await SemanticChecks.Run(args[0], args[1], args[2]);
+    return;
+}
+
+if (args.Length == 4 && args[3] == "hierarchy")
+{
+    await HierarchyChecks.Run(args[0], args[1], args[2]);
+    return;
+}
+
 if (args.Length == 4 && args[3] == "code-actions")
 {
     await CodeActionChecks.Run(args[0], args[1], args[2]);

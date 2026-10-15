@@ -25,7 +25,7 @@
     </Project>
   </TemplateContent>
   <WizardExtension>
-    <Assembly>VisualSwift.VisualStudio, Version=1.1.0.0, Culture=neutral, PublicKeyToken=null</Assembly>
+    <Assembly>VisualSwift.VisualStudio, Version=1.2.0.0, Culture=neutral, PublicKeyToken=null</Assembly>
     <FullClassName>VisualSwift.SwiftTemplateWizard</FullClassName>
   </WizardExtension>
 </VSTemplate>

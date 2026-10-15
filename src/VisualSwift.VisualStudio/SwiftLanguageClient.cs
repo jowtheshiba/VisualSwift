@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.LanguageServer.Client;
@@ -17,10 +18,10 @@ namespace VisualSwift
     [Export(typeof(ILanguageClient)), ContentType("swift")]
     public sealed class SwiftLanguageClient : ILanguageClient, ILanguageClientCustomMessage2, IDisposable
     {
-        private Process server;
-        private SwiftProcessJob serverJob;
+        private SwiftLspBroker broker;
         private JsonRpc customRpc;
-        private SwiftFileWatcher fileWatcher;
+        private readonly List<SwiftFileWatcher> fileWatchers = new List<SwiftFileWatcher>();
+        private string[] serverRoots = Array.Empty<string>();
         private CancellationTokenSource fileRefresh;
         private readonly SemaphoreSlim restartGate = new SemaphoreSlim(1);
         private readonly SwiftMiddleLayer middleLayer = new SwiftMiddleLayer();
@@ -38,6 +39,7 @@ namespace VisualSwift
         public async Task OnLoadedAsync()
         {
             SwiftRuntime.Restart = RestartServerAsync;
+            SwiftRuntime.ProjectsChanged += ProjectsChanged;
             PrototypeLog.Write("Language client loaded.");
             await SwiftPackage.EnsureLoadedAsync();
             if (StartAsync != null)
@@ -52,32 +54,37 @@ namespace VisualSwift
             {
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(token);
                 var workspace = SwiftWorkspace.Current() ?? SwiftRuntime.Workspace;
-                var configuration = SwiftBuildConfigurationEvents.CurrentConfiguration(Package.GetGlobalService(typeof(EnvDTE.DTE)) as EnvDTE.DTE);
+                var dte = Package.GetGlobalService(typeof(EnvDTE.DTE)) as EnvDTE.DTE;
                 SwiftRuntime.SetWorkspace(workspace);
-                var toolchain = await Task.Run(() => Toolchain.Resolve(workspace), token);
+                serverRoots = SwiftRuntime.Workspaces.Concat(new[] { workspace }).Where(root => root != null).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+                var configurations = serverRoots.ToDictionary(root => root, root => SwiftBuildConfigurationEvents.CurrentConfiguration(dte, root), StringComparer.OrdinalIgnoreCase);
                 middleLayer.Workspace = workspace;
-                SwiftRuntime.SetServer("Starting", toolchain.BinDirectory, workspace);
-                var startInfo = await Task.Run(() => toolchain.CreateServerStartInfo(workspace), token);
-                if (workspace != null && SwiftProjectSettings.Exists(workspace)) startInfo.Arguments = SwiftProjectSettings.Read(workspace).Profile(configuration).BuildArguments(configuration, "--configuration");
-                var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
-                var job = new SwiftProcessJob();
-                server = process;
-                serverJob = job;
-                process.ErrorDataReceived += (_, args) => { if (args.Data != null) PrototypeLog.Write("server: " + args.Data); };
-                process.Exited += (_, __) =>
+                var bins = new System.Collections.Concurrent.ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                broker = new SwiftLspBroker(serverRoots, async (root, cancellation) =>
                 {
-                    PrototypeLog.Write("SourceKit-LSP exited.");
-                    if (ReferenceEquals(server, process)) SwiftRuntime.SetServer("Error", failure: "SourceKit-LSP exited. Open Swift Output for details.");
-                };
-                if (!process.Start())
-                {
-                    throw new InvalidOperationException("SourceKit-LSP could not be started.");
-                }
-                job.Attach(process);
-                process.BeginErrorReadLine();
-                PrototypeLog.Write("Started SourceKit-LSP pid=" + process.Id + " bin=" + toolchain.BinDirectory);
-                var connection = new SwiftServerConnection(process, workspace);
-                return connection;
+                    var toolchain = await Task.Run(() => Toolchain.Resolve(root), cancellation).ConfigureAwait(false);
+                    bins[root] = toolchain.BinDirectory;
+                    var startInfo = await Task.Run(() => toolchain.CreateServerStartInfo(root), cancellation).ConfigureAwait(false);
+                    var configuration = configurations[root];
+                    if (SwiftProjectSettings.Exists(root)) startInfo.Arguments = SwiftProjectSettings.Read(root).Profile(configuration).BuildArguments(configuration, "--configuration");
+                    var process = new Process { StartInfo = startInfo };
+                    var job = new SwiftProcessJob();
+                    try
+                    {
+                        process.ErrorDataReceived += (_, args) => { if (args.Data != null) PrototypeLog.Write("server [" + root + "]: " + args.Data); };
+                        if (!process.Start()) throw new InvalidOperationException("SourceKit-LSP could not be started.");
+                        job.Attach(process); process.BeginErrorReadLine();
+                        PrototypeLog.Write("Started SourceKit-LSP pid=" + process.Id + " package=" + root + " bin=" + toolchain.BinDirectory);
+                        return new SwiftLspEndpoint(process.StandardInput.BaseStream, process.StandardOutput.BaseStream, () =>
+                        {
+                            job.Dispose();
+                            try { if (!process.HasExited) process.Kill(); } catch (InvalidOperationException) { }
+                            process.Dispose();
+                        });
+                    }
+                    catch { job.Dispose(); process.Dispose(); throw; }
+                }, (root, state, failure) => { bins.TryGetValue(root, out var bin); SwiftRuntime.SetServer(state, bin, root, failure); });
+                return new SwiftBrokerConnection(broker);
             }
             catch (Exception error)
             {
@@ -90,13 +97,15 @@ namespace VisualSwift
         public Task OnServerInitializedAsync()
         {
             PrototypeLog.Write("SourceKit-LSP initialized.");
-            SwiftRuntime.SetServer("Running", SwiftRuntime.ActiveBin, SwiftRuntime.ActiveWorkspace);
-            if (customRpc != null && middleLayer.Workspace != null)
+            if (customRpc != null)
             {
                 var rpc = customRpc;
-                fileWatcher = new SwiftFileWatcher(middleLayer.Workspace, changes => rpc.NotifyWithParameterObjectAsync("workspace/didChangeWatchedFiles", changes));
-                fileWatcher.StructureChanged = QueueFileRefresh;
-                middleLayer.FlushFileChanges = fileWatcher.FlushAsync;
+                foreach (var root in serverRoots)
+                {
+                    var watcher = new SwiftFileWatcher(root, changes => rpc.NotifyWithParameterObjectAsync("workspace/didChangeWatchedFiles", changes));
+                    watcher.StructureChanged = QueueFileRefresh; fileWatchers.Add(watcher);
+                }
+                middleLayer.FlushFileChanges = () => Task.WhenAll(fileWatchers.Select(watcher => watcher.FlushAsync()).ToArray());
             }
             return Task.CompletedTask;
         }
@@ -115,11 +124,13 @@ namespace VisualSwift
         public Task AttachForCustomMessageAsync(JsonRpc rpc)
         {
             customRpc = rpc;
+            SwiftRuntime.Request = (method, parameters) => rpc.InvokeWithParameterObjectAsync<JToken>(method, parameters);
             middleLayer.CodeActions.ResolveAsync = action => rpc.InvokeWithParameterObjectAsync<JToken>("codeAction/resolve", action);
             return Task.CompletedTask;
         }
 
-        public void Dispose() => DisposeServer();
+        public void Dispose() { SwiftRuntime.ProjectsChanged -= ProjectsChanged; DisposeServer(); }
+        private void ProjectsChanged() { if (broker != null && !serverRoots.OrderBy(root => root, StringComparer.OrdinalIgnoreCase).SequenceEqual(SwiftRuntime.Workspaces.OrderBy(root => root, StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase)) QueueFileRefresh(); }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSSDK007", Justification = "The refresh task is tracked by FileAndForget, catches failures and is cancelled when the server is disposed.")]
         private void QueueFileRefresh()
@@ -144,55 +155,46 @@ namespace VisualSwift
         private async Task RestartServerAsync()
         {
             await restartGate.WaitAsync();
+            IDisposable editors = null;
             try
             {
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                editors = SwiftEditorSessions.Suspend();
                 if (StopAsync != null) await StopAsync.InvokeAsync(this, EventArgs.Empty);
                 DisposeServer();
                 if (StartAsync == null) throw new InvalidOperationException("Open a Swift file to activate SourceKit-LSP.");
                 await StartAsync.InvokeAsync(this, EventArgs.Empty);
             }
-            finally { restartGate.Release(); }
+            finally
+            {
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                try { editors?.Dispose(); }
+                finally { restartGate.Release(); }
+            }
         }
 
         private void DisposeServer()
         {
             middleLayer.FlushFileChanges = null;
             Interlocked.Exchange(ref fileRefresh, null)?.Cancel();
-            Interlocked.Exchange(ref fileWatcher, null)?.Dispose();
+            foreach (var watcher in fileWatchers) watcher.Dispose();
+            fileWatchers.Clear();
             customRpc = null;
+            SwiftRuntime.Request = null;
             middleLayer.CodeActions.Clear();
-            var process = Interlocked.Exchange(ref server, null);
-            Interlocked.Exchange(ref serverJob, null)?.Dispose();
+            Interlocked.Exchange(ref broker, null)?.Dispose();
             SwiftRuntime.SetServer("Stopped");
-            if (process == null) return;
-            try
-            {
-                if (!process.HasExited) process.Kill();
-            }
-            catch (InvalidOperationException) { }
-            finally { process.Dispose(); }
         }
     }
 
-    internal sealed class SwiftServerConnection : Connection
+    internal sealed class SwiftBrokerConnection : Connection
     {
-        private readonly Process process;
-
-        public SwiftServerConnection(Process process, string workspace) : base(process.StandardOutput.BaseStream, new LspInputStream(process.StandardInput.BaseStream, workspace))
-        {
-            this.process = process;
-        }
-
+        private readonly SwiftLspBroker broker;
+        public SwiftBrokerConnection(SwiftLspBroker broker) : base(broker.Output, new LspInputStream(broker.Input, null)) { this.broker = broker; }
         protected override void Dispose(bool isDisposing)
         {
+            if (isDisposing) broker.Dispose();
             base.Dispose(isDisposing);
-            if (!isDisposing) return;
-            try
-            {
-                if (!process.WaitForExit(2000)) process.Kill();
-                PrototypeLog.Write("SourceKit-LSP connection disposed.");
-            }
-            catch (InvalidOperationException) { }
         }
     }
 
@@ -214,6 +216,7 @@ namespace VisualSwift
 
         public async Task<JToken> HandleRequestAsync(string methodName, JToken methodParam, Func<JToken, Task<JToken>> sendRequest)
         {
+            if (methodName == "textDocument/foldingRange") return new JArray();
             if (methodName == "initialize" && Workspace != null && methodParam is JObject initialize)
             {
                 var uri = new Uri(Workspace + Path.DirectorySeparatorChar).AbsoluteUri;
@@ -222,7 +225,8 @@ namespace VisualSwift
                 initialize["workspaceFolders"] = new JArray(new JObject { ["uri"] = uri, ["name"] = Path.GetFileName(Workspace) });
             }
             PrototypeLog.Write("request " + methodName);
-            var hints = methodName == "textDocument/inlayHint" ? SwiftSettings.Default.ReadInlayHints(Workspace) : null;
+            var workspace = SwiftWorkspace.ForUri((string)methodParam?["textDocument"]?["uri"]) ?? Workspace;
+            var hints = methodName == "textDocument/inlayHint" ? SwiftSettings.Default.ReadInlayHints(workspace) : null;
             if (hints != null && !hints.Enabled) return new JArray();
             if (methodName.StartsWith("textDocument/", StringComparison.Ordinal) && FlushFileChanges != null)
                 await FlushFileChanges();

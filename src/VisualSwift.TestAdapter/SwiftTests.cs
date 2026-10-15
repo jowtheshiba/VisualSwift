@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Text;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
@@ -58,6 +59,7 @@ namespace VisualSwift.Testing
             {
                 if (!Regex.IsMatch(id, framework == "XCTest" ? @"^[^\s/]+/[^\s]+$" : @"^[^\s]+\([^\s]*\)$")) continue;
                 var test = new TestCase(id, new Uri(Executor), source) { DisplayName = id };
+                using (var hash = MD5.Create()) test.Id = new Guid(hash.ComputeHash(Encoding.UTF8.GetBytes(Executor + "|" + source.ToUpperInvariant() + "|" + framework + "|" + id)));
                 test.SetPropertyValue(Framework, framework);
                 test.Traits.Add(new Trait("Framework", framework));
                 test.Traits.Add(new Trait("Package", Path.GetFileName(Path.GetDirectoryName(source))));

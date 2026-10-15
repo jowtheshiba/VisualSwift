@@ -23,7 +23,7 @@ namespace VisualSwift
                 await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(token);
                 var dte = Package.GetGlobalService(typeof(DTE)) as DTE;
                 if (dte?.Debugger.CurrentMode != dbgDebugMode.dbgDesignMode) throw new InvalidOperationException("Stop the current debug session before starting Swift debugging.");
-                var configuration = SwiftBuildConfigurationEvents.CurrentConfiguration(dte);
+                var configuration = SwiftBuildConfigurationEvents.CurrentConfiguration(dte, workspace);
                 var profile = SwiftProjectSettings.Read(workspace).Profile(configuration);
                 if (SwiftProjectSettings.Exists(workspace)) options = SwiftDebugOptions.Read(workspace, configuration);
                 var toolchain = await Task.Run(() => Toolchain.Resolve(workspace), token);

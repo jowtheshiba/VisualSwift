@@ -35,11 +35,15 @@ namespace VisualSwift
         private readonly CheckBox useF5 = new CheckBox { Content = "Use Swift debugger for F5 in this package", Margin = new Thickness(0, 8, 0, 8) };
         private readonly Grid actions = new Grid();
         private readonly TextBlock summary = Label();
+        private readonly ComboBox projects = new ComboBox { MinWidth = 240, Margin = new Thickness(0, 6, 0, 0) };
+        private bool updatingProjects;
+        private string displayedWorkspace;
         private readonly ListBox navigation = new ListBox { MinWidth = 150, BorderThickness = new Thickness(0), Margin = new Thickness(0, 0, 12, 0) };
         private readonly TextBox output = new TextBox { IsReadOnly = true, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
         private readonly Button cancel = new Button { Content = "Cancel", IsEnabled = false, Margin = new Thickness(0, 8, 0, 0) };
         private CancellationTokenSource operation;
         private string hintsWorkspace;
+        private readonly SwiftHierarchyControl hierarchy = new SwiftHierarchyControl();
 
         public SwiftWindowControl()
         {
@@ -55,6 +59,12 @@ namespace VisualSwift
             var header = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
             Heading(header, "Swift");
             header.Children.Add(summary);
+            projects.SetResourceReference(BackgroundProperty, EnvironmentColors.ToolWindowBackgroundBrushKey);
+            projects.SetResourceReference(ForegroundProperty, EnvironmentColors.ToolWindowTextBrushKey);
+            projects.SetResourceReference(StyleProperty, VsResourceKeys.ThemedDialogComboBoxStyleKey);
+            header.Children.Add(new TextBlock { Text = "Project", Margin = new Thickness(0, 6, 0, 0) });
+            header.Children.Add(projects);
+            projects.SelectionChanged += ProjectSelected;
             root.Children.Add(header);
             var body = new Grid();
             body.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -137,6 +147,7 @@ namespace VisualSwift
             Grid.SetRow(output, 2);
             outputPage.Children.Add(output);
             AddPage("Output", outputPage);
+            AddPage("Hierarchy", hierarchy);
             navigation.SelectionChanged += (_, __) =>
             {
                 for (var i = 0; i < actions.Children.Count; i++) actions.Children[i].Visibility = i == navigation.SelectedIndex ? Visibility.Visible : Visibility.Collapsed;
@@ -151,6 +162,12 @@ namespace VisualSwift
             cancel.Click += (_, __) => operation?.Cancel();
             Loaded += OnLoaded;
             Unloaded += (_, __) => { SwiftRuntime.Changed -= RuntimeChanged; PrototypeLog.Written -= AppendOutput; operation?.Cancel(); };
+        }
+
+        internal async Task ShowHierarchyAsync(string uri, int line, int character, bool types)
+        {
+            navigation.SelectedIndex = navigation.Items.Count - 1;
+            await hierarchy.ShowAsync(uri, line, character, types);
         }
 
         private StackPanel Page(string title)
@@ -229,8 +246,8 @@ namespace VisualSwift
                 output.ScrollToEnd();
             }
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(token);
-            SwiftRuntime.SetWorkspace(SwiftWorkspace.Current() ?? SwiftRuntime.Workspace);
             var workspace = SwiftRuntime.Workspace;
+            displayedWorkspace = workspace;
             var selected = await Task.Run(() => SwiftSettings.Default.Read(workspace), token);
             LoadHints();
             scope.SelectedIndex = selected.Scope == "Workspace" ? 1 : 0;
@@ -322,7 +339,6 @@ namespace VisualSwift
         private async Task RefreshPackageAsync(CancellationToken token)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(token);
-            SwiftRuntime.SetWorkspace(SwiftWorkspace.Current() ?? SwiftRuntime.Workspace);
             var workspace = SwiftRuntime.Workspace;
             if (workspace == null) { metadata.Text = "Open a Swift package and a Swift source file."; return; }
             var toolchain = await Task.Run(() => Toolchain.Resolve(workspace), token);
@@ -381,7 +397,22 @@ namespace VisualSwift
 
         private void UpdateStatus()
         {
+            updatingProjects = true;
+            try
+            {
+                var roots = SwiftRuntime.Workspaces;
+                var current = SwiftRuntime.Workspace;
+                if (!projects.Items.Cast<ComboBoxItem>().Select(item => item.Tag as string).SequenceEqual(roots, StringComparer.OrdinalIgnoreCase))
+                {
+                    projects.Items.Clear();
+                    foreach (var root in roots) projects.Items.Add(new ComboBoxItem { Content = Path.GetFileName(root) + " — " + root, Tag = root });
+                }
+                projects.SelectedItem = projects.Items.Cast<ComboBoxItem>().FirstOrDefault(item => string.Equals(item.Tag as string, current, StringComparison.OrdinalIgnoreCase));
+                projects.IsEnabled = operation == null;
+            }
+            finally { updatingProjects = false; }
             summary.Text = (SwiftRuntime.SelectedVersion?.Split('\n')[0].Trim() ?? "Toolchain not validated") + "  |  " + SwiftRuntime.State + "  |  " + (SwiftRuntime.Workspace == null ? "No package" : Path.GetFileName(SwiftRuntime.Workspace));
+            if (operation == null && !string.Equals(displayedWorkspace, SwiftRuntime.Workspace, StringComparison.OrdinalIgnoreCase)) RefreshChangedProject();
             try
             {
                 var workspace = SwiftRuntime.Workspace;
@@ -400,5 +431,14 @@ namespace VisualSwift
             }
             catch (Exception error) { selection.Text = "Toolchain unavailable: " + error.Message; }
         }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSTHRD100", Justification = "WPF selection uses a void event; RunAsync observes failures.")]
+        private async void ProjectSelected(object sender, SelectionChangedEventArgs args)
+        {
+            if (updatingProjects || operation != null || !(projects.SelectedItem is ComboBoxItem item)) return;
+            SwiftRuntime.SetWorkspace(item.Tag as string);
+            await RunAsync(RefreshAsync);
+        }
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSTHRD100", Justification = "Dispatcher updates use a void callback; RunAsync observes failures.")]
+        private async void RefreshChangedProject() => await RunAsync(RefreshAsync);
     }
 }
