@@ -176,6 +176,7 @@ namespace VisualSwift
         private void DisposeServer()
         {
             middleLayer.FlushFileChanges = null;
+            middleLayer.Dispose();
             Interlocked.Exchange(ref fileRefresh, null)?.Cancel();
             foreach (var watcher in fileWatchers) watcher.Dispose();
             fileWatchers.Clear();
@@ -198,11 +199,12 @@ namespace VisualSwift
         }
     }
 
-    internal sealed class SwiftMiddleLayer : ILanguageClientMiddleLayer2<JToken>
+    internal sealed class SwiftMiddleLayer : ILanguageClientMiddleLayer2<JToken>, IDisposable
     {
         public SwiftCodeActions CodeActions { get; } = new SwiftCodeActions();
         public string Workspace { get; set; }
         public Func<Task> FlushFileChanges { get; set; }
+        private CancellationTokenSource activeCompletion;
         public bool CanHandle(string methodName) => true;
 
         public async Task HandleNotificationAsync(string methodName, JToken methodParam, Func<JToken, Task> sendNotification)
@@ -229,21 +231,67 @@ namespace VisualSwift
             var workspace = SwiftWorkspace.ForUri((string)methodParam?["textDocument"]?["uri"]) ?? Workspace;
             var hints = methodName == "textDocument/inlayHint" ? SwiftSettings.Default.ReadInlayHints(workspace) : null;
             if (hints != null && !hints.Enabled) return new JArray();
-            if (methodName.StartsWith("textDocument/", StringComparison.Ordinal) && FlushFileChanges != null)
+            if (methodName.StartsWith("textDocument/", StringComparison.Ordinal)
+                && FlushFileChanges != null
+                && methodName != "textDocument/completion"
+                && !methodName.StartsWith("textDocument/semanticTokens", StringComparison.Ordinal)
+                && methodName != "textDocument/publishDiagnostics")
                 await FlushFileChanges();
             if (methodName == "textDocument/codeAction") methodParam = CodeActions.Prepare(methodParam);
+
+            CancellationTokenSource cts = null;
+            if (methodName == "textDocument/completion")
+            {
+                var next = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                var previous = Interlocked.Exchange(ref activeCompletion, next);
+                try { previous?.Cancel(); previous?.Dispose(); } catch { }
+                cts = next;
+            }
+            else if (methodName == "textDocument/signatureHelp")
+            {
+                cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            }
+            else if (methodName == "textDocument/inlayHint")
+            {
+                cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            }
+            else if (methodName != "initialize" && methodName != "textDocument/formatting" && methodName != "textDocument/rangeFormatting")
+            {
+                cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            }
+
             JToken result;
-            try { result = await sendRequest(methodParam); }
+            try
+            {
+                var task = sendRequest(methodParam);
+                result = cts != null ? await task.WithCancellation(cts.Token) : await task;
+            }
+            catch (OperationCanceledException)
+            {
+                if (methodName == "textDocument/completion" || methodName == "textDocument/inlayHint") return new JArray();
+                return null;
+            }
             catch (Exception error) when (methodName == "textDocument/formatting" || methodName == "textDocument/rangeFormatting")
             {
                 PrototypeLog.Write("Swift formatting failed: " + error.Message);
                 throw;
             }
+            finally
+            {
+                if (cts != null && !ReferenceEquals(cts, activeCompletion)) cts.Dispose();
+            }
+
             if (methodName == "initialize" && result?["capabilities"] is JObject capabilities) capabilities["hoverProvider"] = false;
             if (hints != null && result is JArray inlayHints) result = hints.Filter(inlayHints);
             if (methodName == "textDocument/codeAction") result = await CodeActions.CompleteAsync(result);
             PrototypeLog.Write("response " + methodName + " " + result?.ToString(Newtonsoft.Json.Formatting.None));
             return result;
+        }
+
+        public void Dispose()
+        {
+            var cts = Interlocked.Exchange(ref activeCompletion, null);
+            try { cts?.Cancel(); cts?.Dispose(); } catch { }
         }
     }
 }

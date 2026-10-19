@@ -158,7 +158,7 @@ namespace VisualSwift
             if (capabilities["semanticTokensProvider"] is JObject provider)
             {
                 provider["legend"] = new JObject { ["tokenTypes"] = new JArray(types), ["tokenModifiers"] = new JArray(modifiers) };
-                provider["full"] = true;
+                provider["full"] = new JObject { ["delta"] = true };
             }
             if (capabilities["workspace"] is JObject workspace) workspace["workspaceFolders"] = new JObject { ["supported"] = true, ["changeNotifications"] = false };
             var commands = new JArray();
@@ -225,6 +225,14 @@ namespace VisualSwift
                 requests.TryRemove(message["id"].ToString(), out _);
                 var result = message["result"];
                 if (method == "textDocument/semanticTokens/full" || method == "textDocument/semanticTokens/range") session.MapTokens(result?["data"] as JArray);
+                else if (method == "textDocument/semanticTokens/full/delta")
+                {
+                    session.MapTokens(result?["data"] as JArray);
+                    if (result?["edits"] is JArray edits)
+                    {
+                        foreach (var edit in edits) session.MapTokens(edit?["data"] as JArray);
+                    }
+                }
                 if (method == "textDocument/completion")
                     foreach (var item in (result as JArray ?? result?["items"] as JArray ?? new JArray())) TagData(item, session);
                 if (method == "textDocument/inlayHint" || method == "textDocument/codeAction" || method == "workspace/symbol")

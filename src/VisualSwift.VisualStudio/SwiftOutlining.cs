@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Tagging;
+using Microsoft.VisualStudio.Threading;
 using Microsoft.VisualStudio.Utilities;
 using Newtonsoft.Json.Linq;
 
@@ -56,13 +57,13 @@ namespace VisualSwift
                 {
                     try
                     {
-                        await Task.Delay(400, cancellation.Token);
+                        await Task.Delay(1000, cancellation.Token);
                         await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(cancellation.Token);
                         var snapshot = buffer.CurrentSnapshot;
                         var request = SwiftRuntime.Request;
                         if (request == null || SwiftRuntime.State != "Running") return;
                         if (!documents.TryGetTextDocument(buffer, out var document)) return;
-                        var result = await request("textDocument/foldingRange", new { textDocument = new { uri = new Uri(Path.GetFullPath(document.FilePath)).AbsoluteUri } });
+                        var result = await request("textDocument/foldingRange", new { textDocument = new { uri = new Uri(Path.GetFullPath(document.FilePath)).AbsoluteUri } }).WithCancellation(cancellation.Token);
                         await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(cancellation.Token);
                         if (disposed || cancellation.IsCancellationRequested || snapshot != buffer.CurrentSnapshot || !ReferenceEquals(request, SwiftRuntime.Request)) return;
                         var updated = new List<ITrackingSpan>();

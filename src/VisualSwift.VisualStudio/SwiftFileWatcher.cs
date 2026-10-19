@@ -59,10 +59,12 @@ namespace VisualSwift
                 if (disposed || !Included(path)) return;
                 if (Relevant(path))
                 {
+                    if (type == 2 && path.EndsWith(".swift", StringComparison.OrdinalIgnoreCase))
+                        return;
                     if (type != 2 && path.EndsWith(".swift", StringComparison.OrdinalIgnoreCase)) structureChanged = true;
                     pending[path] = type == 2 && pending.TryGetValue(path, out var previous) && previous == 1 ? 1 : type;
                     if (type == 3) known.Remove(path); else known.Add(path);
-                    timer.Change(200, Timeout.Infinite);
+                    timer.Change(500, Timeout.Infinite);
                     return;
                 }
                 rescan = type != 2 && (Directory.Exists(path) || known.Any(file => file.StartsWith(path + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)));
@@ -95,7 +97,7 @@ namespace VisualSwift
                     known.Clear();
                     known.UnionWith(current);
                     scanned = true;
-                    timer.Change(200, Timeout.Infinite);
+                    timer.Change(500, Timeout.Infinite);
                 }
             }
             catch (IOException error) { PrototypeLog.Write("Swift file scan failed: " + error.Message); }
@@ -108,9 +110,10 @@ namespace VisualSwift
             catch (Exception error) { PrototypeLog.Write("Swift file notification failed: " + error.Message); }
         }
 
-        public async Task FlushAsync()
+        public async Task FlushAsync(CancellationToken cancellationToken = default)
         {
-            await sending.WaitAsync().ConfigureAwait(false);
+            if (!await sending.WaitAsync(3000, cancellationToken).ConfigureAwait(false))
+                return;
             try
             {
                 JArray changes;
