@@ -59,9 +59,13 @@ namespace VisualSwift
                 if (disposed || !Included(path)) return;
                 if (Relevant(path))
                 {
-                    if (type == 2 && path.EndsWith(".swift", StringComparison.OrdinalIgnoreCase))
+                    if (path.EndsWith(".swift", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (type == 2) return;
+                        pending[path] = type;
+                        timer.Change(500, Timeout.Infinite);
                         return;
-                    if (type != 2 && path.EndsWith(".swift", StringComparison.OrdinalIgnoreCase)) structureChanged = true;
+                    }
                     pending[path] = type == 2 && pending.TryGetValue(path, out var previous) && previous == 1 ? 1 : type;
                     if (type == 3) known.Remove(path); else known.Add(path);
                     timer.Change(500, Timeout.Infinite);
@@ -92,7 +96,7 @@ namespace VisualSwift
                     if (disposed) return;
                     var current = new HashSet<string>(Files(root), StringComparer.OrdinalIgnoreCase);
                     if (scanned && (current.Any(file => file.EndsWith(".swift", StringComparison.OrdinalIgnoreCase) && !known.Contains(file)) || known.Any(file => file.EndsWith(".swift", StringComparison.OrdinalIgnoreCase) && !current.Contains(file)))) structureChanged = true;
-                    foreach (var file in current) pending[file] = known.Contains(file) ? 2 : 1;
+                    foreach (var file in current) if (!known.Contains(file)) pending[file] = 1;
                     foreach (var file in known) if (!current.Contains(file)) pending[file] = 3;
                     known.Clear();
                     known.UnionWith(current);
@@ -121,13 +125,45 @@ namespace VisualSwift
                 lock (gate)
                 {
                     if (disposed || pending.Count == 0) return;
+                    foreach (var pair in pending.ToArray())
+                    {
+                        var path = pair.Key;
+                        if (path.EndsWith(".swift", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var exists = File.Exists(path);
+                            if (exists && known.Contains(path))
+                            {
+                                pending.Remove(path);
+                            }
+                            else if (exists && !known.Contains(path))
+                            {
+                                known.Add(path);
+                                pending[path] = 1;
+                                structureChanged = true;
+                            }
+                            else if (!exists && known.Contains(path))
+                            {
+                                known.Remove(path);
+                                pending[path] = 3;
+                                structureChanged = true;
+                            }
+                            else
+                            {
+                                pending.Remove(path);
+                            }
+                        }
+                    }
+                    if (pending.Count == 0 && !structureChanged) return;
                     changes = new JArray(pending.Select(p => new JObject { ["uri"] = new Uri(p.Key).AbsoluteUri, ["type"] = p.Value }));
                     pending.Clear();
                     refresh = structureChanged;
                     structureChanged = false;
                 }
-                await notify(new JObject { ["changes"] = changes }).ConfigureAwait(false);
-                PrototypeLog.Write("Swift file changes forwarded: " + changes.Count);
+                if (changes.Count > 0)
+                {
+                    await notify(new JObject { ["changes"] = changes }).ConfigureAwait(false);
+                    PrototypeLog.Write("Swift file changes forwarded: " + changes.Count);
+                }
                 if (refresh) StructureChanged?.Invoke();
             }
             finally { sending.Release(); }
