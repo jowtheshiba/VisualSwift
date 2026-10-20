@@ -1,6 +1,6 @@
 # VisualSwift
 
-Version **1.4**.
+Version **1.5**.
 
 Swift language support for Microsoft Visual Studio on Windows, powered by SourceKit-LSP and Swift Package Manager.
 
@@ -14,9 +14,9 @@ Build Release installers with:
 
 Packages are written to `artifacts/installers`:
 
-- `VisualSwift-1.4.0-universal.vsix` for ARM64 and x86_64.
-- `VisualSwift-1.4.0-arm64.vsix` for ARM64.
-- `VisualSwift-1.4.0-x86_64.vsix` for x86_64.
+- `VisualSwift-1.5.0-universal.vsix` for ARM64 and x86_64.
+- `VisualSwift-1.5.0-arm64.vsix` for ARM64.
+- `VisualSwift-1.5.0-x86_64.vsix` for x86_64.
 
 Choose one package, close Visual Studio, double-click the VSIX, and select the target IDE instance. All variants share one extension identity and support upgrades from earlier versions. SHA-256 checksums and package validation results are included alongside the installers. Packages are unsigned; VSIX Installer may show an unverified publisher.
 
