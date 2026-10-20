@@ -4,7 +4,6 @@ using System.ComponentModel.Composition;
 using System.Linq;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text;
-using Microsoft.VisualStudio.Text.BraceCompletion;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
 
@@ -18,7 +17,6 @@ namespace VisualSwift
         private static readonly List<WeakReference<ITextBuffer>> buffers = new List<WeakReference<ITextBuffer>>();
         private static IContentType plainText;
         [Import] internal IContentTypeRegistryService ContentTypes = null;
-        [Import] internal IBraceCompletionManagerFactory BraceCompletionManagerFactory = null;
 
         public void TextViewCreated(ITextView textView)
         {
@@ -27,19 +25,10 @@ namespace VisualSwift
             var reference = new WeakReference<ITextBuffer>(textView.TextBuffer);
             buffers.Add(reference);
             textView.Closed += (_, __) => { ThreadHelper.ThrowIfNotOnUIThread(); buffers.Remove(reference); };
-            try
+            if (!textView.Options.GetOptionValue<bool>(DefaultTextViewOptions.BraceCompletionEnabledOptionId))
             {
-                var manager = BraceCompletionManagerFactory != null ? BraceCompletionManagerFactory.TryGetBraceCompletionManager(textView) : null;
-                var option = textView.Options.GetOptionValue<bool>(DefaultTextViewOptions.BraceCompletionEnabledOptionId);
-                if (!option)
-                {
-                    textView.Options.SetOptionValue(DefaultTextViewOptions.BraceCompletionEnabledOptionId, true);
-                    option = textView.Options.GetOptionValue<bool>(DefaultTextViewOptions.BraceCompletionEnabledOptionId);
-                    PrototypeLog.Write("BraceCompletion option forced on for swift view");
-                }
-                PrototypeLog.Write("BraceCompletion diagnostic: view=" + (textView.TextBuffer.ContentType?.TypeName ?? "?") + " manager=" + (manager != null) + " enabled=" + (manager?.Enabled ?? false) + " option=" + option + " opening=[[" + (manager?.OpeningBraces ?? "") + "]] closing=[[" + (manager?.ClosingBraces ?? "") + "]]");
+                textView.Options.SetOptionValue(DefaultTextViewOptions.BraceCompletionEnabledOptionId, true);
             }
-            catch (Exception error) { PrototypeLog.Write("BraceCompletion diagnostic failed: " + error); }
         }
 
         internal static IDisposable Suspend()

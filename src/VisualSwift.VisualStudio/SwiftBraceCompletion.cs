@@ -28,9 +28,7 @@ namespace VisualSwift
         public bool TryCreateContext(ITextView textView, SnapshotPoint openingPoint, char openingBrace, char closingBrace, out IBraceCompletionContext context)
         {
             context = null;
-            bool inside = SwiftSourceScanner.IsInsideStringOrComment(openingPoint.Snapshot, openingPoint.Position);
-            PrototypeLog.Write("BraceCompletion TryCreateContext: brace=" + openingBrace + " position=" + openingPoint.Position + " insideStringOrComment=" + inside);
-            if (inside) return false;
+            if (SwiftSourceScanner.IsInsideStringOrComment(openingPoint.Snapshot, openingPoint.Position)) return false;
             context = new SwiftBraceCompletionContext();
             return true;
         }
