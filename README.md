@@ -54,9 +54,24 @@ Open **Extensions > Swift** for toolchain, language server, package, debug and o
 
 For a mixed-language project, search for **Swift + C++** in **File > New > Project**. The template separates `Sources/App` and `Sources/CppMath`, imports the public `CppMath.h` header and prints `Swift + C++: 42`. SwiftPM builds both targets; Visual Studio's native C++ editor handles `.cpp` and `.h` files. F5 generates DWARF symbols for the local C/C++ targets as well as Swift. The interoperability override applies to all Swift targets, including tests; leaving it at **From Package.swift** preserves the manifest's per-target settings. C++ dependencies and the language standard remain defined in `Package.swift`.
 
+## Example
+
+[`WinSDKCounter`](samples/WinSDKCounter) is a native Windows GUI application written
+in Swift using WinSDK directly. Click the button to increment the counter in the
+window title. Open its folder in Visual Studio with VisualSwift installed, or run
+it from the repository root:
+
+```powershell
+swift run --package-path samples/WinSDKCounter -Xswiftc -use-ld=lld
+```
+
+See the [example README](samples/WinSDKCounter/README.md) for details.
+
 ## Build and verification
 
 Building requires Windows, Visual Studio, an installed Swift toolchain/SDK, and pinned NuGet dependencies. Probes require .NET SDK 10. The VSIX targets .NET Framework 4.7.2. The build script locates installed Visual Studio TestWindow interfaces with vswhere.
+
+Internal Swift packages used by verification scripts live in `tools/Fixtures`.
 
 ```powershell
 .\scripts\build.ps1

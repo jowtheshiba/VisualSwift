@@ -7,7 +7,7 @@ $env:PATH = $ToolchainBin + [IO.Path]::PathSeparator + $env:PATH
 . (Join-Path $repository 'templates\Shared\WindowsSwiftEnvironment.ps1')
 $cxxEnvironment = Get-WindowsSwiftEnvironment $ToolchainBin
 foreach ($name in $cxxEnvironment.Keys) { [Environment]::SetEnvironmentVariable($name, $cxxEnvironment[$name], 'Process') }
-$package = Join-Path $repository 'samples\CxxInterop'
+$package = Join-Path $repository 'tools\Fixtures\CxxInterop'
 $scratch = Join-Path $repository 'artifacts\cxx-package'
 & $swift build --package-path $package --scratch-path $scratch -c debug -Xswiftc -g -Xswiftc -use-ld=lld -Xcc -g -Xcc -gdwarf-4 -Xcxx -g -Xcxx -gdwarf-4 -Xlinker /debug:dwarf
 if ($LASTEXITCODE -ne 0) { throw 'Swift + C++ debug build failed.' }

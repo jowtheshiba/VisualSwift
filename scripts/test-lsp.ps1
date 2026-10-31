@@ -8,7 +8,7 @@ $serverExecutable = Join-Path $ToolchainBin 'sourcekit-lsp.exe'
 if (!(Test-Path -LiteralPath $serverExecutable)) { throw 'sourcekit-lsp.exe was not found in the selected toolchain.' }
 & $swiftExecutable --version
 if ($LASTEXITCODE -ne 0) { throw 'Swift could not be started.' }
-$packageDirectory = Join-Path $repository 'samples\LspSmoke'
+$packageDirectory = Join-Path $repository 'tools\Fixtures\LspSmoke'
 & $swiftExecutable build --package-path $packageDirectory
 if ($LASTEXITCODE -ne 0) { throw 'Swift smoke package build failed.' }
 dotnet run --project (Join-Path $repository 'tools\VisualSwift.LspProbe') -- $serverExecutable $packageDirectory (Join-Path $repository 'artifacts\lsp-smoke.json')

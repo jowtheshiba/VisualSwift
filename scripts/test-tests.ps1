@@ -14,9 +14,9 @@ $adapter = Join-Path $repository 'src\VisualSwift.TestAdapter\bin\Debug\net472'
 $results = Join-Path $repository 'artifacts\test-adapter-checks'
 $workspace = Join-Path $results 'package with spaces'
 New-Item -ItemType Directory -Force $workspace | Out-Null
-Copy-Item -LiteralPath (Join-Path $repository 'samples\TestSmoke\Package.swift') -Destination $workspace -Force
+Copy-Item -LiteralPath (Join-Path $repository 'tools\Fixtures\TestSmoke\Package.swift') -Destination $workspace -Force
 foreach ($folder in @('Sources', 'Tests')) {
-    Copy-Item -LiteralPath (Join-Path $repository "samples\TestSmoke\$folder") -Destination $workspace -Recurse -Force
+    Copy-Item -LiteralPath (Join-Path $repository "tools\Fixtures\TestSmoke\$folder") -Destination $workspace -Recurse -Force
 }
 $settingsDirectory = Join-Path $workspace '.vs\VisualSwift'
 New-Item -ItemType Directory -Force $settingsDirectory | Out-Null
@@ -51,7 +51,7 @@ if ($LASTEXITCODE -ne 0) { throw "Selected test run failed. See $selectedLog" }
 $selectedCases = @($selected.TestRun.Results.UnitTestResult)
 if ($selectedCases.Count -ne 1 -or $selectedCases[0].testName -ne 'TestSmokeTests.parameterized(value:)' -or $selectedCases[0].outcome -ne 'Passed') { throw 'Run Selected executed unexpected tests.' }
 $emptyLog = Join-Path $results "$runId-no-tests.log"
-& $runner (Join-Path $repository 'samples\LspSmoke\Package.swift') "/TestAdapterPath:$adapter" /ListTests *> $emptyLog
+& $runner (Join-Path $repository 'tools\Fixtures\LspSmoke\Package.swift') "/TestAdapterPath:$adapter" /ListTests *> $emptyLog
 if ($LASTEXITCODE -ne 0 -or (Get-Content -LiteralPath $emptyLog -Raw) -match 'Swift test discovery failed') { throw "A package without tests failed discovery. See $emptyLog" }
 @{ passed = $true; discovered = $cases.Count; outcomes = $expected; selected = $selectedCases[0].testName; allResults = "$runId-all.trx"; selectedResults = "$runId-selected.trx" } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $results 'report.json')
 Write-Output 'Test adapter checks passed: seven discovered tests, Passed/Failed/Skipped for both frameworks, parameterized tests, Run Selected, assertion details, paths with spaces and packages without tests.'
