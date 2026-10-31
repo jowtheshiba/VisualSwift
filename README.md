@@ -1,6 +1,6 @@
 # VisualSwift
 
-Version **1.5**.
+Version **1.6.0**.
 
 Swift language support for Microsoft Visual Studio on Windows, powered by SourceKit-LSP and Swift Package Manager.
 
@@ -14,9 +14,9 @@ Build Release installers with:
 
 Packages are written to `artifacts/installers`:
 
-- `VisualSwift-1.5.0-universal.vsix` for ARM64 and x86_64.
-- `VisualSwift-1.5.0-arm64.vsix` for ARM64.
-- `VisualSwift-1.5.0-x86_64.vsix` for x86_64.
+- `VisualSwift-1.6.0-universal.vsix` for ARM64 and x86_64.
+- `VisualSwift-1.6.0-arm64.vsix` for ARM64.
+- `VisualSwift-1.6.0-x86_64.vsix` for x86_64.
 
 Choose one package, close Visual Studio, double-click the VSIX, and select the target IDE instance. All variants share one extension identity and support upgrades from earlier versions. SHA-256 checksums and package validation results are included alongside the installers. Packages are unsigned; VSIX Installer may show an unverified publisher.
 
@@ -47,6 +47,8 @@ To uninstall, open **Extensions > Manage Extensions > Installed**, select **Visu
 - Per-configuration C++ interoperability override: use **From Package.swift** or **Enabled for all Swift targets** in the project's Build settings.
 - LLDB debugging: F5, breakpoints, stepping, Call Stack, Locals and Watch.
 - Automatic language server refresh when Swift files are added, removed or renamed.
+- Package-scoped refresh keeps the other projects' language servers running.
+- Automatic recovery after SourceKit-LSP exits, including replay of open files and unsaved edits. Recovery stops after three attempts within two minutes; the Swift window shows the status and failure reason. Use **Restart** to retry after correcting the problem.
 
 Open **Extensions > Swift** for toolchain, language server, package, debug and output settings. Use the **Project** selector to inspect a specific Swift package; editor navigation also selects the corresponding project. Project folders inside solution folders are supported.
 
@@ -60,12 +62,15 @@ Building requires Windows, Visual Studio, an installed Swift toolchain/SDK, and 
 .\scripts\build.ps1
 .\scripts\build-installers.ps1
 .\scripts\test-lsp.ps1
+.\scripts\test-lsp-recovery.ps1
 .\scripts\test-debug.ps1
 .\scripts\test-tests.ps1
 .\scripts\test-templates.ps1 -InstanceId YOUR_INSTANCE_ID -Platform ARM64
 ```
 
 The development VSIX is in `src\VisualSwift.VisualStudio\bin\Debug\net472`. Probe reports are in `artifacts`. Test adapter checks expect intentional failures and skips in the smoke fixture. Installer checks validate contents, manifests, architecture targets, and AnyCPU assemblies; they do not establish runtime compatibility on untested machines.
+
+Recovery checks cover initialization callbacks, unsaved incremental edits, file creation/rename/deletion, retry limits and cancellation. They also terminate a real SourceKit-LSP process and verify recovery and new-file completion while another package's server keeps running. Adding or removing projects from the solution still reconnects the full language client; source file changes refresh only their package.
 
 The newest Signature Help, Inlay Hints, type navigation and Test Explorer additions passed LSP/core/VSTest checks. Their final IDE interaction checks remain pending because computer-use could not capture the IDE window.
 

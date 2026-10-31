@@ -19,13 +19,14 @@ namespace VisualSwift
         private readonly Action<string, string, string> status;
         private readonly Dictionary<string, Session> sessions = new Dictionary<string, Session>(StringComparer.OrdinalIgnoreCase);
         private readonly ConcurrentDictionary<string, Session> requests = new ConcurrentDictionary<string, Session>();
-        private readonly ConcurrentDictionary<string, Tuple<Session, JToken>> callbacks = new ConcurrentDictionary<string, Tuple<Session, JToken>>();
+        private readonly ConcurrentDictionary<string, Tuple<Session, JToken, int>> callbacks = new ConcurrentDictionary<string, Tuple<Session, JToken, int>>();
         private readonly CancellationTokenSource lifetime = new CancellationTokenSource();
         private readonly SwiftMessageOutput output = new SwiftMessageOutput();
         private readonly SwiftMessageInput input;
         private readonly SemaphoreSlim receive = new SemaphoreSlim(1);
         private readonly object gate = new object();
         private string[] types, modifiers;
+        private JObject configuration;
         private int nextCallback;
         private bool disposed;
         public Stream Input => input;
@@ -73,7 +74,8 @@ namespace VisualSwift
                     if (callbacks.TryRemove(id.ToString(), out var callback))
                     {
                         var response = (JObject)message.DeepClone(); response["id"] = callback.Item2;
-                        await callback.Item1.SendAsync(response).ConfigureAwait(false);
+                        try { await callback.Item1.SendCallbackAsync(response, callback.Item3).ConfigureAwait(false); }
+                        catch (IOException error) { PrototypeLog.Write("Swift callback connection closed: " + error.Message); }
                     }
                     return;
                 }
@@ -95,13 +97,14 @@ namespace VisualSwift
                     {
                         foreach (var group in (message["params"]?["changes"] as JArray ?? new JArray()).GroupBy(change => Route(change)))
                         {
-                            if (group.Key != null) await group.Key.SendAsync(new JObject { ["jsonrpc"] = "2.0", ["method"] = method, ["params"] = new JObject { ["changes"] = new JArray(group.Select(item => item.DeepClone())) } }).ConfigureAwait(false);
+                            if (group.Key != null) await group.Key.ForwardAsync(new JObject { ["jsonrpc"] = "2.0", ["method"] = method, ["params"] = new JObject { ["changes"] = new JArray(group.Select(item => item.DeepClone())) } }).ConfigureAwait(false);
                         }
                         return;
                     }
                     if (method == "initialized" || method == "workspace/didChangeConfiguration" || method == "workspace/didChangeWorkspaceFolders")
                     {
-                        if (method != "workspace/didChangeWorkspaceFolders") foreach (var session in All()) await session.SendAsync(message).ConfigureAwait(false);
+                        if (method == "workspace/didChangeConfiguration") configuration = (JObject)message.DeepClone();
+                        if (method != "workspace/didChangeWorkspaceFolders") foreach (var session in All()) await session.ForwardAsync(message).ConfigureAwait(false);
                         return;
                     }
                     var destination = Route(message["params"]);
@@ -109,12 +112,12 @@ namespace VisualSwift
                     var forwarded = (JObject)message.DeepClone();
                     Unwrap(forwarded["params"], destination);
                     if (id != null) requests[id.ToString()] = destination;
-                    await destination.SendAsync(forwarded).ConfigureAwait(false);
+                    await destination.ForwardAsync(forwarded).ConfigureAwait(false);
                 }
                 catch (Exception error)
                 {
                     PrototypeLog.Write("Swift project routing [" + method + "]: " + error.Message);
-                    if (id != null) Error(id, error.Message);
+                    if (id != null) { requests.TryRemove(id.ToString(), out _); Error(id, error.Message); }
                 }
             }
             finally { receive.Release(); }
@@ -142,6 +145,7 @@ namespace VisualSwift
                     var uri = new Uri(root + Path.DirectorySeparatorChar).AbsoluteUri;
                     parameters["rootUri"] = uri; parameters["rootPath"] = root;
                     parameters["workspaceFolders"] = new JArray(new JObject { ["uri"] = uri, ["name"] = Path.GetFileName(root) });
+                    session.InitializeParameters = parameters;
                     var result = (JObject)await session.RequestAsync("initialize", parameters).ConfigureAwait(false);
                     lock (gate) sessions[root] = session;
                     initialized.Add(Tuple.Create(session, result));
@@ -152,7 +156,11 @@ namespace VisualSwift
             if (initialized.Count == 0) throw new InvalidOperationException("No Swift project language server could be initialized. Check each project's toolchain.");
             types = initialized.SelectMany(item => (item.Item2["capabilities"]?["semanticTokensProvider"]?["legend"]?["tokenTypes"] as JArray ?? new JArray()).Values<string>()).Distinct().ToArray();
             modifiers = initialized.SelectMany(item => (item.Item2["capabilities"]?["semanticTokensProvider"]?["legend"]?["tokenModifiers"] as JArray ?? new JArray()).Values<string>()).Distinct().ToArray();
-            foreach (var item in initialized) item.Item1.SetLegend(item.Item2["capabilities"]?["semanticTokensProvider"]?["legend"]);
+            foreach (var item in initialized)
+            {
+                item.Item1.SetLegend(item.Item2["capabilities"]?["semanticTokensProvider"]?["legend"]);
+                item.Item1.ArmRecovery();
+            }
             var combined = (JObject)initialized[0].Item2.DeepClone();
             var capabilities = (JObject)combined["capabilities"];
             if (capabilities["semanticTokensProvider"] is JObject provider)
@@ -175,6 +183,7 @@ namespace VisualSwift
                 var items = new JArray();
                 foreach (var session in All())
                 {
+                    if (!session.Available) continue;
                     var result = await session.RequestAsync(method, message["params"]).ConfigureAwait(false);
                     var values = method == "workspace/diagnostic" ? result?["items"] as JArray : result as JArray;
                     foreach (var item in values ?? new JArray()) { var copy = item.DeepClone(); TagData(copy, session); items.Add(copy); }
@@ -218,7 +227,7 @@ namespace VisualSwift
                     session.Observe(session.SendAsync(new JObject { ["jsonrpc"] = "2.0", ["id"] = message["id"].DeepClone(), ["result"] = new JArray(new JObject { ["uri"] = new Uri(session.Root + Path.DirectorySeparatorChar).AbsoluteUri, ["name"] = Path.GetFileName(session.Root) }) })); return;
                 }
                 var key = "visualswift.callback." + Interlocked.Increment(ref nextCallback);
-                callbacks[key] = Tuple.Create(session, message["id"].DeepClone()); message["id"] = key;
+                callbacks[key] = Tuple.Create(session, message["id"].DeepClone(), session.Generation); message["id"] = key;
             }
             else if (message["id"] != null)
             {
@@ -249,6 +258,15 @@ namespace VisualSwift
             if (command?.Type == JTokenType.String) item["command"] = session.CommandPrefix + command.Value<string>();
             else if (command is JObject nested && nested["command"]?.Type == JTokenType.String) nested["command"] = session.CommandPrefix + (string)nested["command"];
         }
+        public Task RestartProjectAsync(string root)
+        {
+            lock (gate)
+            {
+                if (disposed) return Task.CompletedTask;
+                if (!sessions.TryGetValue(root, out var session)) throw new InvalidOperationException("The Swift project is no longer loaded: " + root);
+                return session.RestartAsync(false);
+            }
+        }
         public void Dispose()
         {
             lock (gate) { if (disposed) return; disposed = true; }
@@ -258,7 +276,19 @@ namespace VisualSwift
         private sealed class Session : IDisposable
         {
             private readonly SwiftLspBroker owner;
-            private readonly SwiftLspEndpoint endpoint;
+            private SwiftLspEndpoint endpoint;
+            private readonly object stateGate = new object();
+            private readonly Dictionary<string, JObject> documents = new Dictionary<string, JObject>(StringComparer.OrdinalIgnoreCase);
+            private readonly Dictionary<string, JToken> watchedChanges = new Dictionary<string, JToken>(StringComparer.OrdinalIgnoreCase);
+            private readonly Queue<DateTime> attempts = new Queue<DateTime>();
+            private Task recovery;
+            private Exception failure;
+            private bool armed;
+            private bool available = true;
+            private int generation;
+            public JObject InitializeParameters { get; set; }
+            public bool Available { get { lock (stateGate) return available && failure == null && !disposed; } }
+            public int Generation { get { lock (stateGate) return generation; } }
             private readonly SemaphoreSlim writes = new SemaphoreSlim(1);
             private readonly ConcurrentDictionary<string, TaskCompletionSource<JToken>> pending = new ConcurrentDictionary<string, TaskCompletionSource<JToken>>();
             private readonly ConcurrentDictionary<string, string> methods = new ConcurrentDictionary<string, string>();
@@ -270,7 +300,161 @@ namespace VisualSwift
             public Session(SwiftLspBroker owner, string root, int index, SwiftLspEndpoint endpoint)
             {
                 this.owner = owner; Root = root; CommandPrefix = "visualswift/" + index + "/"; this.endpoint = endpoint;
-                Observe(ReadAsync());
+                Observe(ReadAsync(endpoint, generation));
+            }
+            public void ArmRecovery()
+            {
+                lock (stateGate) { armed = true; if (failure != null) Observe(RestartAsync(true)); }
+            }
+            public Task RestartAsync(bool automatic)
+            {
+                lock (stateGate)
+                {
+                    if (disposed || owner.disposed) return Task.CompletedTask;
+                    if (recovery != null && !recovery.IsCompleted) return recovery;
+                    available = false;
+                    recovery = Task.Run(() => RecoverAsync(automatic));
+                    return recovery;
+                }
+            }
+            private void FailRequests(Exception error)
+            {
+                foreach (var completion in pending.Values) completion.TrySetException(error);
+                foreach (var request in owner.requests.Where(item => ReferenceEquals(item.Value, this)).ToArray())
+                    if (owner.requests.TryRemove(request.Key, out _)) owner.Error(JToken.Parse(request.Key), error.Message);
+                foreach (var callback in owner.callbacks.Where(item => ReferenceEquals(item.Value.Item1, this)).ToArray()) owner.callbacks.TryRemove(callback.Key, out _);
+                methods.Clear();
+            }
+            private async Task RecoverAsync(bool automatic)
+            {
+                try
+                {
+                    if (!automatic) { lock (stateGate) attempts.Clear(); }
+                    while (!owner.lifetime.IsCancellationRequested)
+                    {
+                        int attempt;
+                        lock (stateGate)
+                        {
+                            var now = DateTime.UtcNow;
+                            while (attempts.Count > 0 && now - attempts.Peek() > TimeSpan.FromMinutes(2)) attempts.Dequeue();
+                            if (attempts.Count >= 3) throw new InvalidOperationException("SourceKit-LSP recovery stopped after 3 attempts in 2 minutes. Use Restart to try again.", failure);
+                            attempts.Enqueue(now); attempt = attempts.Count;
+                        }
+                        owner.status?.Invoke(Root, "Restarting", "Attempt " + attempt + " of 3");
+                        PrototypeLog.Write("Restarting SourceKit-LSP for " + Root + " (attempt " + attempt + ").");
+                        try
+                        {
+                            // Retire the reader before closing its streams; late output must not reach the IDE.
+                            lock (stateGate) { generation++; available = false; endpoint.Dispose(); }
+                            FailRequests(new IOException("SourceKit-LSP is restarting for " + Root));
+                            if (automatic || attempt > 1) await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt - 1)), owner.lifetime.Token).ConfigureAwait(false);
+                            var replacement = await owner.start(Root, owner.lifetime.Token).ConfigureAwait(false);
+                            lock (stateGate)
+                            {
+                                if (disposed || owner.disposed) { replacement.Dispose(); return; }
+                                endpoint = replacement; failure = null;
+                                Observe(ReadAsync(replacement, generation));
+                            }
+                            var result = await RequestAsync("initialize", InitializeParameters).ConfigureAwait(false);
+                            SetLegend(result?["capabilities"]?["semanticTokensProvider"]?["legend"]);
+                            await SendAsync(new JObject { ["jsonrpc"] = "2.0", ["method"] = "initialized", ["params"] = new JObject() }).ConfigureAwait(false);
+                            // Only replay takes the frontend gate. Initialization callbacks must remain routable.
+                            await owner.receive.WaitAsync(owner.lifetime.Token).ConfigureAwait(false);
+                            try
+                            {
+                                if (owner.configuration != null) await SendAsync(owner.configuration).ConfigureAwait(false);
+                                if (watchedChanges.Count > 0)
+                                {
+                                    await SendAsync(new JObject { ["jsonrpc"] = "2.0", ["method"] = "workspace/didChangeWatchedFiles", ["params"] = new JObject { ["changes"] = new JArray(watchedChanges.Values.Select(change => change.DeepClone())) } }).ConfigureAwait(false);
+                                    watchedChanges.Clear();
+                                }
+                                foreach (var document in documents.Values)
+                                    await SendAsync(new JObject { ["jsonrpc"] = "2.0", ["method"] = "textDocument/didOpen", ["params"] = new JObject { ["textDocument"] = document.DeepClone() } }).ConfigureAwait(false);
+                                lock (stateGate)
+                                {
+                                    if (failure != null) throw new IOException("SourceKit-LSP exited during recovery.", failure);
+                                    owner.lifetime.Token.ThrowIfCancellationRequested();
+                                    available = true;
+                                    owner.status?.Invoke(Root, "Running", null);
+                                }
+                            }
+                            finally { owner.receive.Release(); }
+                            return;
+                        }
+                        catch (OperationCanceledException) when (owner.lifetime.IsCancellationRequested) { return; }
+                        catch (Exception error)
+                        {
+                            lock (stateGate) { failure = error; available = false; }
+                            PrototypeLog.Write("Swift recovery failed for " + Root + ": " + error.Message);
+                        }
+                    }
+                }
+                catch (Exception error)
+                {
+                    lock (stateGate)
+                    {
+                        available = false; generation++; endpoint.Dispose(); FailRequests(error);
+                        if (!owner.disposed) owner.status?.Invoke(Root, "Error", error.Message);
+                    }
+                }
+                finally
+                {
+                    lock (stateGate)
+                    {
+                        // A crash can arrive between replay and completion of this recovery task.
+                        recovery = null;
+                        if (available && failure != null && !disposed && !owner.disposed) Observe(RestartAsync(true));
+                    }
+                }
+            }
+            public async Task ForwardAsync(JObject message)
+            {
+                TrackDocument(message);
+                if (!Available)
+                {
+                    if (message["id"] != null) throw new InvalidOperationException("SourceKit-LSP is unavailable for " + Root + ". Check its status or use Restart.");
+                    if ((string)message["method"] == "workspace/didChangeWatchedFiles")
+                        foreach (var change in message["params"]?["changes"] as JArray ?? new JArray()) watchedChanges[(string)change["uri"]] = change.DeepClone();
+                    return;
+                }
+                await SendAsync(message).ConfigureAwait(false);
+            }
+            private void TrackDocument(JObject message)
+            {
+                var method = (string)message["method"];
+                var parameters = message["params"];
+                var uri = (string)parameters?["textDocument"]?["uri"];
+                if (uri == null) return;
+                if (method == "textDocument/didOpen") documents[uri] = (JObject)parameters["textDocument"].DeepClone();
+                else if (method == "textDocument/didClose") documents.Remove(uri);
+                else if (method == "textDocument/didChange" && documents.TryGetValue(uri, out var document))
+                {
+                    var text = (string)document["text"] ?? "";
+                    foreach (var change in parameters["contentChanges"] as JArray ?? new JArray())
+                    {
+                        var range = change["range"];
+                        if (range == null) text = (string)change["text"] ?? "";
+                        else
+                        {
+                            var start = Offset(text, range["start"]); var end = Offset(text, range["end"]);
+                            text = text.Substring(0, start) + (string)change["text"] + text.Substring(end);
+                        }
+                    }
+                    document["text"] = text; document["version"] = parameters["textDocument"]["version"]?.DeepClone();
+                }
+            }
+            private static int Offset(string text, JToken position)
+            {
+                var offset = 0;
+                for (var line = 0; line < (int)position["line"]; line++)
+                {
+                    while (offset < text.Length && text[offset] != '\r' && text[offset] != '\n') offset++;
+                    if (offset == text.Length) return offset;
+                    if (text[offset++] == '\r' && offset < text.Length && text[offset] == '\n') offset++;
+                }
+                var end = offset;
+                while (end < text.Length && text[end] != '\r' && text[end] != '\n') end++;
+                return Math.Min(end, offset + (int)position["character"]);
             }
             public void SetLegend(JToken legend)
             {
@@ -306,48 +490,74 @@ namespace VisualSwift
                 if (message["id"] != null && message["method"] != null) methods[message["id"].ToString()] = (string)message["method"];
                 return WriteAsync(message);
             }
-            private async Task WriteAsync(JObject message)
+            public Task SendCallbackAsync(JObject message, int epoch) => WriteAsync(message, epoch);
+            private async Task WriteAsync(JObject message, int? epoch = null)
             {
                 var frame = SwiftMessageInput.Frame(message);
                 await writes.WaitAsync(owner.lifetime.Token).ConfigureAwait(false);
-                try { await endpoint.Input.WriteAsync(frame, 0, frame.Length, owner.lifetime.Token).ConfigureAwait(false); await endpoint.Input.FlushAsync(owner.lifetime.Token).ConfigureAwait(false); }
+                try
+                {
+                    SwiftLspEndpoint current;
+                    lock (stateGate)
+                    {
+                        if (epoch.HasValue && (disposed || epoch.Value != generation)) return;
+                        if (disposed) throw new ObjectDisposedException(nameof(Session));
+                        if (failure != null) throw new IOException("SourceKit-LSP connection failed.", failure);
+                        current = endpoint;
+                    }
+                    await current.Input.WriteAsync(frame, 0, frame.Length, owner.lifetime.Token).ConfigureAwait(false);
+                    await current.Input.FlushAsync(owner.lifetime.Token).ConfigureAwait(false);
+                }
                 finally { writes.Release(); }
             }
-            private async Task ReadAsync()
+            private async Task ReadAsync(SwiftLspEndpoint current, int epoch)
             {
                 var parser = new SwiftMessageInput(message =>
                 {
-                    var id = message["id"]?.ToString(); var method = (string)message["method"];
-                    if (id != null && method == null)
+                    lock (stateGate)
                     {
-                        methods.TryRemove(id, out var requested); method = requested;
-                        if (pending.TryGetValue(id, out var completion))
+                        if (disposed || epoch != generation) return Task.CompletedTask;
+                        var id = message["id"]?.ToString(); var method = (string)message["method"];
+                        if (id != null && method == null)
                         {
-                            if (message["error"] != null) completion.TrySetException(new InvalidOperationException(message["error"].ToString()));
-                            else completion.TrySetResult(message["result"] ?? JValue.CreateNull());
-                            return Task.CompletedTask;
+                            methods.TryRemove(id, out var requested); method = requested;
+                            if (pending.TryGetValue(id, out var completion))
+                            {
+                                if (message["error"] != null) completion.TrySetException(new InvalidOperationException(message["error"].ToString()));
+                                else completion.TrySetResult(message["result"] ?? JValue.CreateNull());
+                                return Task.CompletedTask;
+                            }
                         }
+                        owner.Emit(this, message, method); return Task.CompletedTask;
                     }
-                    owner.Emit(this, message, method); return Task.CompletedTask;
                 });
                 try
                 {
                     var bytes = new byte[8192]; int count;
-                    while ((count = await endpoint.Output.ReadAsync(bytes, 0, bytes.Length, owner.lifetime.Token).ConfigureAwait(false)) != 0) await parser.WriteAsync(bytes, 0, count, owner.lifetime.Token).ConfigureAwait(false);
+                    while ((count = await current.Output.ReadAsync(bytes, 0, bytes.Length, owner.lifetime.Token).ConfigureAwait(false)) != 0) await parser.WriteAsync(bytes, 0, count, owner.lifetime.Token).ConfigureAwait(false);
                     if (!disposed && !owner.disposed) throw new EndOfStreamException("SourceKit-LSP exited for " + Root);
                 }
                 catch (Exception error)
                 {
-                    foreach (var completion in pending.Values) completion.TrySetException(error);
-                    if (!disposed && !owner.disposed)
+                    lock (stateGate)
                     {
+                        if (disposed || owner.disposed || epoch != generation) return;
+                        failure = error;
+                        FailRequests(error);
                         owner.status?.Invoke(Root, "Error", error.Message);
-                        foreach (var request in methods.Where(item => !item.Key.StartsWith("visualswift.internal.", StringComparison.Ordinal))) owner.Error(JToken.Parse(request.Key), error.Message);
+                        if (armed) Observe(RestartAsync(true));
                     }
                 }
             }
             public void Observe(Task task) { _ = task.ContinueWith(completed => PrototypeLog.Write("Swift project connection: " + completed.Exception), CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default); }
-            public void Dispose() { if (disposed) return; disposed = true; endpoint.Dispose(); }
+            public void Dispose()
+            {
+                lock (stateGate)
+                {
+                    if (disposed) return; disposed = true; available = false; generation++;
+                    FailRequests(new ObjectDisposedException(nameof(Session))); endpoint.Dispose();
+                }
+            }
         }
     }
 
@@ -356,8 +566,9 @@ namespace VisualSwift
         public Stream Input { get; }
         public Stream Output { get; }
         private readonly Action dispose;
+        private int disposed;
         public SwiftLspEndpoint(Stream input, Stream output, Action dispose) { Input = input; Output = output; this.dispose = dispose; }
-        public void Dispose() => dispose();
+        public void Dispose() { if (Interlocked.Exchange(ref disposed, 1) == 0) dispose(); }
     }
 
     internal abstract class SwiftMessageStream : Stream

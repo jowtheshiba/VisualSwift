@@ -23,6 +23,8 @@ namespace VisualSwift
         private readonly List<SwiftFileWatcher> fileWatchers = new List<SwiftFileWatcher>();
         private string[] serverRoots = Array.Empty<string>();
         private CancellationTokenSource fileRefresh;
+        private readonly object refreshGate = new object();
+        private readonly Dictionary<string, CancellationTokenSource> projectRefreshes = new Dictionary<string, CancellationTokenSource>(StringComparer.OrdinalIgnoreCase);
         private readonly SemaphoreSlim restartGate = new SemaphoreSlim(1);
         private readonly SwiftMiddleLayer middleLayer = new SwiftMiddleLayer();
 
@@ -103,7 +105,8 @@ namespace VisualSwift
                 foreach (var root in serverRoots)
                 {
                     var watcher = new SwiftFileWatcher(root, changes => rpc.NotifyWithParameterObjectAsync("workspace/didChangeWatchedFiles", changes));
-                    watcher.StructureChanged = QueueFileRefresh; fileWatchers.Add(watcher);
+                    var currentBroker = broker;
+                    watcher.StructureChanged = () => QueueProjectRefresh(root, currentBroker); fileWatchers.Add(watcher);
                 }
                 middleLayer.FlushFileChanges = () => Task.WhenAll(fileWatchers.Select(watcher => watcher.FlushAsync()).ToArray());
             }
@@ -131,6 +134,41 @@ namespace VisualSwift
 
         public void Dispose() { SwiftRuntime.ProjectsChanged -= ProjectsChanged; DisposeServer(); }
         private void ProjectsChanged() { if (broker != null && !serverRoots.OrderBy(root => root, StringComparer.OrdinalIgnoreCase).SequenceEqual(SwiftRuntime.Workspaces.OrderBy(root => root, StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase)) QueueFileRefresh(); }
+
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSSDK007", Justification = "The per-package refresh task catches failures and is tracked by FileAndForget.")]
+        private void QueueProjectRefresh(string root, SwiftLspBroker currentBroker)
+        {
+            var cancellation = new CancellationTokenSource();
+            lock (refreshGate)
+            {
+                if (currentBroker == null || !ReferenceEquals(currentBroker, broker)) { cancellation.Dispose(); return; }
+                if (projectRefreshes.TryGetValue(root, out var previous)) previous.Cancel();
+                projectRefreshes[root] = cancellation;
+            }
+            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            {
+                try
+                {
+                    await Task.Delay(1000, cancellation.Token);
+                    cancellation.Token.ThrowIfCancellationRequested();
+                    if (ReferenceEquals(currentBroker, broker))
+                    {
+                        PrototypeLog.Write("Refreshing SourceKit-LSP after source structure changed in " + root);
+                        await currentBroker.RestartProjectAsync(root);
+                    }
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception error) { PrototypeLog.Write("Swift package refresh failed for " + root + ": " + error.Message); }
+                finally
+                {
+                    lock (refreshGate)
+                    {
+                        if (projectRefreshes.TryGetValue(root, out var pending) && ReferenceEquals(pending, cancellation)) projectRefreshes.Remove(root);
+                        cancellation.Dispose();
+                    }
+                }
+            }).FileAndForget("VisualSwift/ProjectFileRefresh");
+        }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "VSSDK007", Justification = "The refresh task is tracked by FileAndForget, catches failures and is cancelled when the server is disposed.")]
         private void QueueFileRefresh()
@@ -178,6 +216,11 @@ namespace VisualSwift
             middleLayer.FlushFileChanges = null;
             middleLayer.Dispose();
             Interlocked.Exchange(ref fileRefresh, null)?.Cancel();
+            lock (refreshGate)
+            {
+                foreach (var refresh in projectRefreshes.Values) refresh.Cancel();
+                projectRefreshes.Clear();
+            }
             foreach (var watcher in fileWatchers) watcher.Dispose();
             fileWatchers.Clear();
             customRpc = null;

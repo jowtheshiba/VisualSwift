@@ -10,7 +10,8 @@ static class MultiProjectChecks
         directory = Path.GetFullPath(directory);
         var roots = new[] { Path.Combine(directory, "Alpha"), Path.Combine(directory, "Beta") };
         var report = new JObject();
-        var processes = new List<Process>();
+        var processes = new ConcurrentBag<Process>();
+        var states = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         try
         {
             await CheckRouting(directory);
@@ -19,6 +20,7 @@ static class MultiProjectChecks
             {
                 var root = roots[index]; var name = Path.GetFileName(root);
                 Directory.CreateDirectory(Path.Combine(root, "Sources", "App"));
+                File.Delete(Path.Combine(root, "Sources", "App", "AddedRecoveryType.swift"));
                 await File.WriteAllTextAsync(Path.Combine(root, "Package.swift"), "// swift-tools-version: 6.0\nimport PackageDescription\nlet package = Package(name: \"" + name + "\", targets: [.executableTarget(name: \"App\")])\n");
                 await File.WriteAllTextAsync(Path.Combine(root, "Sources", "App", "Person.swift"), "struct Person { let " + name.ToLowerInvariant() + "Only: Int }\n");
                 await File.WriteAllTextAsync(Path.Combine(root, "Sources", "App", "main.swift"), "let person = Person(" + name.ToLowerInvariant() + "Only: 1)\nprint(person." + name.ToLowerInvariant() + "Only)\n");
@@ -34,7 +36,7 @@ static class MultiProjectChecks
                 info.Environment["PATH"] = Path.GetDirectoryName(server) + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH");
                 var process = Process.Start(info)!; processes.Add(process); process.BeginErrorReadLine();
                 return Task.FromResult(new SwiftLspEndpoint(process.StandardInput.BaseStream, process.StandardOutput.BaseStream, () => { if (!process.HasExited) process.Kill(entireProcessTree: true); }));
-            });
+            }, (root, state, error) => states[root] = state);
             await using var client = new BrokerClient(broker);
             var initialized = await client.Request("initialize", new JObject { ["processId"] = Environment.ProcessId, ["capabilities"] = new JObject { ["workspace"] = new JObject { ["configuration"] = true }, ["textDocument"] = new JObject { ["completion"] = new JObject { ["completionItem"] = new JObject { ["resolveSupport"] = new JObject { ["properties"] = new JArray("documentation", "detail") } } }, ["semanticTokens"] = new JObject { ["requests"] = new JObject { ["full"] = true, ["range"] = true }, ["tokenTypes"] = new JArray("class", "struct", "variable", "property", "function", "method", "typeParameter"), ["tokenModifiers"] = new JArray("static", "defaultLibrary"), ["formats"] = new JArray("relative") } } } });
             report["initializedServers"] = processes.Count;
@@ -85,6 +87,41 @@ static class MultiProjectChecks
             if (!hasAlphaError || betaErrors?.Any(item => (int?)item["severity"] == 1) == true) throw new InvalidOperationException("Diagnostics are not isolated by project.");
             var symbols = await client.Request("workspace/symbol", new JObject { ["query"] = "Person" });
             report["WorkspaceSymbols"] = symbols;
+
+            var alphaProcess = processes.Single(process => process.StartInfo.WorkingDirectory == roots[0]);
+            var betaProcess = processes.Single(process => process.StartInfo.WorkingDirectory == roots[1]);
+            alphaProcess.Kill(entireProcessTree: true);
+            client.Diagnostics.TryRemove(uris[0], out _);
+            for (var attempt = 0; attempt < 100 && (processes.Count < 3 || states[roots[0]] != "Running"); attempt++)
+            {
+                await client.Request("textDocument/hover", new JObject { ["textDocument"] = new JObject { ["uri"] = uris[1] }, ["position"] = new JObject { ["line"] = 0, ["character"] = 16 } });
+                await Task.Delay(100);
+            }
+            if (processes.Count != 3 || states[roots[0]] != "Running" || betaProcess.HasExited) throw new InvalidOperationException("A real server crash did not recover in isolation.");
+            var replayed = false;
+            for (var attempt = 0; attempt < 40 && !replayed; attempt++)
+            {
+                await client.Request("textDocument/hover", new JObject { ["textDocument"] = new JObject { ["uri"] = uris[0] }, ["position"] = new JObject { ["line"] = 1, ["character"] = 18 } });
+                replayed = client.Diagnostics.TryGetValue(uris[0], out var errors) && errors.Any(item => ((string?)item["message"])?.Contains("missingProperty", StringComparison.Ordinal) == true);
+                if (!replayed) await Task.Delay(200);
+            }
+            if (!replayed) throw new InvalidOperationException("Recovery did not restore unsaved document diagnostics.");
+            report["crashRecoveryPassed"] = true;
+
+            var addedPath = Path.Combine(roots[0], "Sources", "App", "AddedRecoveryType.swift");
+            await File.WriteAllTextAsync(addedPath, "struct AddedRecoveryType { let recoveredOnly: Int }\n");
+            await client.Notify("workspace/didChangeWatchedFiles", new JObject { ["changes"] = new JArray(new JObject { ["uri"] = new Uri(addedPath).AbsoluteUri, ["type"] = 1 }) });
+            await client.Notify("textDocument/didChange", new JObject { ["textDocument"] = new JObject { ["uri"] = uris[0], ["version"] = 3 }, ["contentChanges"] = new JArray(new JObject { ["text"] = "let added = AddedRecoveryType(recoveredOnly: 7)\nprint(added.recoveredOnly)\n" }) });
+            await broker.RestartProjectAsync(roots[0]);
+            var foundAdded = false;
+            for (var attempt = 0; attempt < 40 && !foundAdded; attempt++)
+            {
+                var completion = await client.Request("textDocument/completion", new JObject { ["textDocument"] = new JObject { ["uri"] = uris[0] }, ["position"] = new JObject { ["line"] = 1, ["character"] = 12 } });
+                foundAdded = (completion as JArray ?? completion["items"] as JArray ?? new JArray()).Any(item => (string?)item["label"] == "recoveredOnly");
+                if (!foundAdded) await Task.Delay(200);
+            }
+            if (!foundAdded || processes.Count != 4 || betaProcess.HasExited) throw new InvalidOperationException("An isolated refresh did not discover a new file while preserving the other server.");
+            report["isolatedRefreshPassed"] = true;
             await client.Request("shutdown", null); await client.Notify("exit", null);
             for (var attempt = 0; attempt < 30 && processes.Any(process => !process.HasExited); attempt++) await Task.Delay(100);
             if (processes.Any(process => !process.HasExited)) throw new InvalidOperationException("Project language servers survived shutdown.");
@@ -140,7 +177,7 @@ static class MultiProjectChecks
         await client.Request("textDocument/hover", new JObject { ["textDocument"] = new JObject { ["uri"] = new Uri(Path.Combine(roots[0], "main.swift")).AbsoluteUri } });
     }
 
-    private sealed class BrokerClient : IAsyncDisposable
+    internal sealed class BrokerClient : IAsyncDisposable
     {
         private readonly SwiftLspBroker broker;
         private readonly ConcurrentDictionary<int, TaskCompletionSource<JToken>> pending = new();

@@ -61,7 +61,8 @@ namespace VisualSwift
                 {
                     if (path.EndsWith(".swift", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (type == 2) return;
+                        // Preserve a pending create/delete until FlushAsync reconciles it with disk.
+                        if (type == 2 && pending.TryGetValue(path, out var pendingType) && pendingType != 2) return;
                         pending[path] = type;
                         timer.Change(500, Timeout.Infinite);
                         return;
@@ -133,7 +134,7 @@ namespace VisualSwift
                             var exists = File.Exists(path);
                             if (exists && known.Contains(path))
                             {
-                                pending.Remove(path);
+                                if (pair.Value != 2) pending.Remove(path);
                             }
                             else if (exists && !known.Contains(path))
                             {
