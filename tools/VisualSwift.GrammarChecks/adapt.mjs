@@ -41,5 +41,51 @@ grammar.repository['async-throws'] = { patterns: [
 ] };
 grammar.repository['visualswift-module-selector'] = { match: '\\b([\\p{L}_][\\p{L}_\\p{N}\\p{M}]*)(::)', captures: { 1: { name: 'entity.name.type.module.swift' }, 2: { name: 'keyword.operator.module-selector.swift' } } };
 for (const key of ['declarations-available-types', 'expressions-without-trailing-closures-or-member-references']) grammar.repository[key].patterns.unshift({ include: '#visualswift-module-selector' });
-await fs.writeFile(path.join(root, 'src/VisualSwift.VisualStudio/Grammars/swift.tmLanguage.json'), JSON.stringify(grammar, null, 2) + '\n');
+const strings = grammar.repository['literals-string'].patterns;
+const rawMultiline = strings.find(rule => rule.begin.startsWith('#"""'));
+const rawSingleLine = strings.find(rule => rule.begin === '#"');
+const rawContents = grammar.repository['literals-string-raw-string-guts'].patterns;
+const literalText = String.raw`[^"\\\s]+|[^\S\r\n]+|[^\r\n]`;
+function isolateInterpolation(rule) {
+  // Visual Studio inherits the outer string color for otherwise unclassified Swift code.
+  rule.patterns.push({ name: rule.name, match: literalText });
+  rule.name = 'meta.' + rule.name;
+}
+
+// TextMate only substitutes begin captures in end/while. Generate exact escape
+// patterns for the delimiter lengths representable by Swift's 8-bit token field.
+const rawRules = [];
+for (let count = 1; count <= 255; count++) {
+  const hashes = '#{' + count + '}';
+  const withDelimiter = pattern => pattern.replaceAll('#', hashes);
+  for (const template of [rawMultiline, rawSingleLine]) {
+    const rule = structuredClone(template);
+    rule.begin = '(?<!#)' + withDelimiter(rule.begin);
+    rule.end = rule.end.replace('#', hashes);
+    rule.patterns = rule.patterns.flatMap(pattern => {
+      if (pattern.include === '#literals-string-raw-string-guts') {
+        return rawContents.map(escape => escape.begin
+          ? { ...escape, begin: withDelimiter(escape.begin) }
+          : { ...escape, match: withDelimiter(escape.match).replace(hashes, hashes + '(?!#)') });
+      }
+      if (pattern.name === 'invalid.illegal.content-before-closing-delimiter.swift') {
+        return [{ ...pattern, match: withDelimiter(pattern.match).replace('(?=""")', '(?="""' + hashes + ')') }];
+      }
+      if (pattern.name === 'constant.character.escape.newline.swift') return [{ ...pattern, match: withDelimiter(pattern.match) }];
+      return [pattern];
+    });
+    isolateInterpolation(rule);
+    rawRules.push(rule);
+  }
+}
+
+const rawInclude = '#visualswift-raw-strings';
+grammar.repository['literals-string'].patterns = strings.filter(rule => rule !== rawMultiline && rule !== rawSingleLine);
+grammar.repository['literals-string'].patterns.splice(1, 0, { include: rawInclude });
+for (const rule of strings.filter(rule => rule.patterns.some(pattern => pattern.include === '#literals-string-string-guts'))) isolateInterpolation(rule);
+delete grammar.repository['literals-string-raw-string-guts'];
+grammar.repository[rawInclude.slice(1)] = { patterns: '__VISUALSWIFT_RAW_RULES__' };
+const generated = JSON.stringify(grammar, null, 2).replace('"__VISUALSWIFT_RAW_RULES__"',
+  '[\n' + rawRules.map(rule => '        ' + JSON.stringify(rule)).join(',\n') + '\n      ]');
+await fs.writeFile(path.join(root, 'src/VisualSwift.VisualStudio/Grammars/swift.tmLanguage.json'), generated + '\n');
 console.log('Adapted pinned Swift TextMate grammar.');

@@ -20,6 +20,7 @@
       <Button guid="guidCommands" id="ProjectSettings" priority="0x0107" type="Button"><Parent guid="guidCommands" id="SwiftDependenciesGroup" /><CommandFlag>DynamicVisibility</CommandFlag><CommandFlag>DefaultInvisible</CommandFlag><Strings><ButtonText>Swift Project Settings…</ButtonText></Strings></Button>
       <Button guid="guidCommands" id="CallHierarchy" priority="0x0100" type="Button"><Parent guid="guidCommands" id="SwiftHierarchyGroup" /><CommandFlag>DynamicVisibility</CommandFlag><CommandFlag>DefaultInvisible</CommandFlag><Strings><ButtonText>Swift Call Hierarchy</ButtonText></Strings></Button>
       <Button guid="guidCommands" id="TypeHierarchy" priority="0x0101" type="Button"><Parent guid="guidCommands" id="SwiftHierarchyGroup" /><CommandFlag>DynamicVisibility</CommandFlag><CommandFlag>DefaultInvisible</CommandFlag><Strings><ButtonText>Swift Type Hierarchy</ButtonText></Strings></Button>
+      <Button guid="guidCommands" id="RunSwiftTest" priority="0x0102" type="Button"><Parent guid="guidCommands" id="SwiftHierarchyGroup" /><CommandFlag>DynamicVisibility</CommandFlag><CommandFlag>DefaultInvisible</CommandFlag><Strings><ButtonText>Run Swift Test</ButtonText></Strings></Button>
     </Buttons>
   </Commands>
   <CommandPlacements>
@@ -30,6 +31,7 @@
     <GuidSymbol name="guidPackage" value="{dbaf72a8-6a28-4316-a5c4-982085c40c5a}" />
     <GuidSymbol name="guidCommands" value="{5d796222-e1ce-44f3-9492-5475d8dac383}">
       <IDSymbol name="SwiftHierarchyGroup" value="0x1002" /><IDSymbol name="CallHierarchy" value="0x0301" /><IDSymbol name="TypeHierarchy" value="0x0302" />
+      <IDSymbol name="RunSwiftTest" value="0x0303" />
       <IDSymbol name="SwiftMenuGroup" value="0x1000" /><IDSymbol name="ShowWindow" value="0x0101" />
       <IDSymbol name="SwiftDependenciesGroup" value="0x1001" />
       <IDSymbol name="ProjectSettings" value="0x0208" /><IDSymbol name="ManagePackages" value="0x0201" /><IDSymbol name="AddPackage" value="0x0202" /><IDSymbol name="ResolvePackages" value="0x0203" /><IDSymbol name="UpdateAllPackages" value="0x0204" /><IDSymbol name="UpdatePackage" value="0x0205" /><IDSymbol name="RemovePackage" value="0x0206" /><IDSymbol name="OpenPackage" value="0x0207" />

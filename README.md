@@ -1,6 +1,6 @@
 # VisualSwift
 
-Version **1.6.0**.
+Version **1.7.0**.
 
 Swift language support for Microsoft Visual Studio on Windows, powered by SourceKit-LSP and Swift Package Manager.
 
@@ -14,9 +14,9 @@ Build Release installers with:
 
 Packages are written to `artifacts/installers`:
 
-- `VisualSwift-1.6.0-universal.vsix` for ARM64 and x86_64.
-- `VisualSwift-1.6.0-arm64.vsix` for ARM64.
-- `VisualSwift-1.6.0-x86_64.vsix` for x86_64.
+- `VisualSwift-1.7.0-universal.vsix` for ARM64 and x86_64.
+- `VisualSwift-1.7.0-arm64.vsix` for ARM64.
+- `VisualSwift-1.7.0-x86_64.vsix` for x86_64.
 
 Choose one package, close Visual Studio, double-click the VSIX, and select the target IDE instance. All variants share one extension identity and support upgrades from earlier versions. SHA-256 checksums and package validation results are included alongside the installers. Packages are unsigned; VSIX Installer may show an unverified publisher.
 
@@ -38,6 +38,7 @@ To uninstall, open **Extensions > Manage Extensions > Installed**, select **Visu
 - Signature Help and configurable Inlay Hints.
 - Manual Format Document and Format Selection.
 - SwiftPM tests in Test Explorer (XCTest and Swift Testing).
+- **Run Swift Test** in the editor context menu runs the XCTest method or Swift Testing `@Test` function at the caret and reports the result in Test Explorer.
 - Console and library project templates with Build/Rebuild/Clean.
 - **Swift + C++ Console Application** template with a C++17 library, public headers and SwiftPM interoperability.
 - **Add > New Item > Swift File** with SwiftPM target selection.

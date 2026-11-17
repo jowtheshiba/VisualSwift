@@ -1,9 +1,11 @@
 using System;
 using System.ComponentModel.Design;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio;
+using Microsoft.VisualStudio.ComponentModelHost;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 
@@ -26,6 +28,7 @@ namespace VisualSwift
         private EnvDTE.WindowEvents windowEvents;
         private SwiftDependencyExplorer dependencyExplorer;
         private SwiftBuildConfigurationEvents buildConfigurations;
+        private bool runningTest;
         internal CancellationToken DisposalTokenForDebug => DisposalToken;
         internal static SwiftPackage Instance { get; private set; }
 
@@ -65,6 +68,12 @@ namespace VisualSwift
                     command.Enabled = available && SwiftRuntime.State == "Running";
                 };
             }
+            var runTest = Add(menu, 0x0303, RunTestAsync);
+            runTest.BeforeQueryStatus += (_, __) =>
+            {
+                runTest.Visible = dte?.ActiveDocument?.FullName?.EndsWith(".swift", StringComparison.OrdinalIgnoreCase) == true;
+                runTest.Enabled = runTest.Visible && SwiftRuntime.Request != null && !runningTest;
+            };
             if (dte != null && menu != null) dependencyExplorer = new SwiftDependencyExplorer(dte, menu, DisposalToken);
             if (dte != null) buildConfigurations = new SwiftBuildConfigurationEvents(dte, DisposalToken);
             debugCommands = await GetServiceAsync(typeof(SVsRegisterPriorityCommandTarget)) as IVsRegisterPriorityCommandTarget;
@@ -103,7 +112,7 @@ namespace VisualSwift
                 var dte = Microsoft.VisualStudio.Shell.Package.GetGlobalService(typeof(EnvDTE.DTE)) as EnvDTE.DTE;
                 var current = SwiftWorkspace.Current();
                 var roots = SwiftWorkspace.Projects(dte);
-                SwiftRuntime.SetProjects(dte?.Solution.IsOpen == true || current == null ? roots : new[] { current });
+                SwiftRuntime.SetProjects(roots.Length > 0 || current == null ? roots : new[] { current });
                 SwiftRuntime.SetWorkspace(current);
             }
             catch (Exception error) { PrototypeLog.Write("Swift workspace update: " + error.Message); }
@@ -134,6 +143,41 @@ namespace VisualSwift
             var restart = SwiftRuntime.Restart;
             if (restart == null) throw new InvalidOperationException("Open a Swift file to activate the language server first.");
             await restart();
+        }
+
+        private async Task RunTestAsync()
+        {
+            await JoinableTaskFactory.SwitchToMainThreadAsync(DisposalToken);
+            if (runningTest) return;
+            runningTest = true;
+            try
+            {
+                var dte = await GetServiceAsync(typeof(EnvDTE.DTE)) as EnvDTE.DTE
+                    ?? throw new InvalidOperationException("The Visual Studio editor is unavailable.");
+                var document = dte.ActiveDocument;
+                if (!(document?.Selection is EnvDTE.TextSelection selected) ||
+                    !(document.Object("TextDocument") is EnvDTE.TextDocument text)) return;
+
+                var file = document.FullName;
+                var uri = new Uri(file).AbsoluteUri;
+                var workspace = SwiftWorkspace.ForUri(uri);
+                if (workspace == null) throw new InvalidOperationException("Open the Swift package that contains this test.");
+
+                var line = selected.ActivePoint.Line - 1;
+                var column = selected.ActivePoint.LineCharOffset - 1;
+                var source = text.StartPoint.CreateEditPoint().GetText(text.EndPoint);
+                var request = SwiftRuntime.Request ?? throw new InvalidOperationException("The Swift language server is unavailable.");
+                var testName = await SwiftEditorTests.FindAsync(request, uri, workspace, line, column, DisposalToken);
+
+                await JoinableTaskFactory.SwitchToMainThreadAsync(DisposalToken);
+                if (dte.ActiveDocument?.FullName != file || text.StartPoint.CreateEditPoint().GetText(text.EndPoint) != source)
+                    throw new InvalidOperationException("The test document changed. Run the command again.");
+                if (!document.Saved) document.Save();
+                var components = await GetServiceAsync(typeof(SComponentModel)) as IComponentModel
+                    ?? throw new InvalidOperationException("Visual Studio Test Explorer is unavailable.");
+                await SwiftEditorTests.RunAsync(components, Path.Combine(workspace, "Package.swift"), testName, DisposalToken);
+            }
+            finally { runningTest = false; }
         }
 
         private async Task ShowHierarchyAsync(bool types)
